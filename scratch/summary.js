@@ -1,0 +1,34 @@
+const S = require("./scenario.js");
+const wd = d => new Date(d + "T00:00:00Z").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
+const out = [];
+const p = s => out.push(s);
+p(`# SCENARIO summary (${S.meta.dataLabel})\n`);
+p(`Trip: ${wd(S.trip.startDate)} → ${wd(S.trip.endDate)} · ${S.trip.days} days / ${S.trip.nights} nights`);
+p(`Gateways: ${S.gateways.options.find(o => o.id === S.gateways.winner).name} — ${S.gateways.reason}\n`);
+p(`## Route & nights`);
+S.legs.forEach(l => p(`- ${l.city.padEnd(9)} ${l.nights}N  ${wd(l.from)} → ${wd(l.to)}${l.splurge ? "  (splurge ryokan)" : ""}  | out: ${l.transferOut}`));
+const tot = S.legs.reduce((a, l) => a + l.nights, 0);
+p(`Total nights: ${tot} ${tot === S.trip.nights ? "✔" : "✘"}\n`);
+p(`## 15 day cards`);
+S.days.forEach(d => p(`- D${String(d.n).padStart(2)} ${wd(d.date).padEnd(11)} ${d.city.padEnd(9)} ${d.type.padEnd(9)} ${d.theme} — ${d.highlights.join(" · ")}`));
+p(`\n## Trip Dials (default → final, moved by)`);
+S.dialGroups.forEach(g => g.dials.forEach(d => {
+  const f = v => typeof v === "object" ? Object.entries(v).map(([k, x]) => `${k}:${x}`).join(" ") : v;
+  p(`- ${g.icon} ${d.name.padEnd(20)} ${f(d.default)} → ${f(d.final)}${d.movedBy.length ? "   ← " + d.movedBy.map(m => m.note).join("; ") : ""}`);
+}));
+p(`\n## Constraints`);
+S.constraints.forEach(c => p(`- [${c.strength}/${c.weight}] ${c.chip} ← "${c.phrase}"  ${JSON.stringify(c.json)}`));
+p(`Clarifying Q (${S.clarifyingQuestion.trigger}) "${S.clarifyingQuestion.question}" → ${S.clarifyingQuestion.selected}`);
+p(`Rejected: ` + S.cities.filter(c => c.role === "rejected").map(c => `${c.name} (${c.reason})`).join("; "));
+p(`\n## Route leaderboard`);
+S.routes.forEach(r => p(`- ${r.id} ${r.total.toFixed(1)} ${r.valid ? "" : "✘ " + r.violated + " "}${r.tie ? "[TIE] " : ""}${r.order.join(" → ")}`));
+p(`\n## Validation failures & repairs`);
+S.validationFailures.forEach(v => p(`- ${v.before}  →  ${v.after}`));
+p(`\n## Edit-loop requests`);
+S.editRequests.forEach(e => p(`- ${e.id}. [${e.intent}] "${e.text}" → re-run steps ${e.reRun.join(",") || "none"} · ${e.timing}`));
+// consistency checks
+const errs = [];
+S.days.forEach((d, i) => { const exp = new Date(Date.UTC(2026, 10, 10 + i)).toISOString().slice(0, 10); if (d.date !== exp) errs.push(`D${d.n} date`); });
+const day7 = S.days[6]; if (wd(day7.date).indexOf("Mon") !== 0) errs.push("Day 7 not Monday");
+p(`\nConsistency checks: ${errs.length ? "✘ " + errs.join(", ") : "✔ all pass"}`);
+console.log(out.join("\n"));
