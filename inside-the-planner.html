@@ -1,0 +1,1575 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Inside the Planner</title>
+<meta name="description" content="An interactive explainer of how an AI-assisted trip planner turns a traveller's request into a validated, editable itinerary.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f6f5f1; --surface: #ffffff; --surface-2: #f0efea; --line: #e2e0d8; --line-2: #cfccc2;
+  --ink: #1d1d1b; --ink-2: #55544f; --ink-3: #8a8980;
+  --user: #6b6b66; --user-bg: #ecebe6;
+  --ai: #7a4fe0; --ai-bg: #f1ebff; --ai-line: #cdb9fb;
+  --code: #2563d9; --code-bg: #e9f0ff; --code-line: #b5cbf7;
+  --data: #1d8a5b; --data-bg: #e5f5ec; --data-line: #a9dcc0;
+  --ext: #b7770a; --ext-bg: #fdf3dd; --ext-line: #f0d18e;
+  --bad: #d23f3f; --bad-bg: #fdecec; --ok: #1d8a5b; --ok-bg: #e5f5ec;
+  --hl: #ffe58a; --focus: #2563d9;
+  --radius: 14px; --radius-sm: 9px; --shadow: 0 1px 2px rgba(0,0,0,.04), 0 4px 16px rgba(0,0,0,.05);
+  --font: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --t: 240ms;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #141413; --surface: #1d1d1b; --surface-2: #252522; --line: #33322e; --line-2: #45443f;
+    --ink: #f1efe8; --ink-2: #bdbbb2; --ink-3: #8b8a82;
+    --user: #b5b4ad; --user-bg: #2b2b28;
+    --ai: #b89bff; --ai-bg: #2a2340; --ai-line: #5a4696;
+    --code: #7fa8ff; --code-bg: #1b2640; --code-line: #34508a;
+    --data: #5fd09a; --data-bg: #16301f; --data-line: #2d6b48;
+    --ext: #f0b54a; --ext-bg: #33280f; --ext-line: #6f5520;
+    --bad: #ff7b7b; --bad-bg: #3a1c1c; --ok: #5fd09a; --ok-bg: #16301f;
+    --hl: #6b5a12; --shadow: 0 1px 2px rgba(0,0,0,.3), 0 4px 16px rgba(0,0,0,.25);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #141413; --surface: #1d1d1b; --surface-2: #252522; --line: #33322e; --line-2: #45443f;
+  --ink: #f1efe8; --ink-2: #bdbbb2; --ink-3: #8b8a82;
+  --user: #b5b4ad; --user-bg: #2b2b28;
+  --ai: #b89bff; --ai-bg: #2a2340; --ai-line: #5a4696;
+  --code: #7fa8ff; --code-bg: #1b2640; --code-line: #34508a;
+  --data: #5fd09a; --data-bg: #16301f; --data-line: #2d6b48;
+  --ext: #f0b54a; --ext-bg: #33280f; --ext-line: #6f5520;
+  --bad: #ff7b7b; --bad-bg: #3a1c1c; --ok: #5fd09a; --ok-bg: #16301f;
+  --hl: #6b5a12; --shadow: 0 1px 2px rgba(0,0,0,.3), 0 4px 16px rgba(0,0,0,.25);
+  color-scheme: dark;
+}
+@media (prefers-reduced-motion: reduce) { :root { --t: 0ms; } *, *::before, *::after { animation: none !important; transition: none !important; } }
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 var(--font); overflow-x: hidden; }
+button { font: inherit; color: inherit; cursor: pointer; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 6px; }
+code, pre, .mono { font-family: var(--mono); font-size: 12.5px; }
+pre { margin: 0; white-space: pre-wrap; word-break: break-word; background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 10px 12px; }
+h1, h2, h3, h4 { margin: 0; line-height: 1.25; letter-spacing: -0.01em; }
+h1 { font-size: 26px; font-weight: 700; }
+h2 { font-size: 20px; font-weight: 650; }
+h3 { font-size: 15px; font-weight: 650; }
+h4 { font-size: 13px; font-weight: 600; color: var(--ink-2); text-transform: uppercase; letter-spacing: .04em; }
+p { margin: 0; }
+.muted { color: var(--ink-2); } .faint { color: var(--ink-3); } .small { font-size: 13px; } .xs { font-size: 12px; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
+/* ─── Layout ─── */
+.wrap { max-width: 1480px; margin: 0 auto; padding: 0 24px; }
+header.top { padding: 22px 0 14px; }
+.top-row { display: flex; gap: 20px; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; }
+.pitch { color: var(--ink-2); margin-top: 4px; max-width: 70ch; }
+.core { display: inline-flex; gap: 8px; align-items: center; margin-top: 10px; font-weight: 600; font-size: 14px; }
+.core .sw { color: var(--code); } .core .ai { color: var(--ai); }
+.top-meta { display: flex; flex-direction: column; gap: 8px; align-items: flex-end; }
+.counter { font-size: 13px; color: var(--ink-2); background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; white-space: nowrap; }
+.counter b { color: var(--ink); }
+.illus { position: fixed; right: 12px; bottom: 12px; z-index: 60; font-size: 11.5px; background: var(--ext-bg); color: var(--ext); border: 1px solid var(--ext-line); border-radius: 999px; padding: 3px 10px; pointer-events: none; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 12px; font-size: 12.5px; color: var(--ink-2); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.dot { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+.d-user { background: var(--user); } .d-ai { background: var(--ai); } .d-code { background: var(--code); } .d-data { background: var(--data); } .d-ext { background: var(--ext); } .d-bad { background: var(--bad); }
+.theme-btn { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 4px 10px; font-size: 12.5px; }
+
+details.scenario { margin-top: 12px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
+details.scenario > summary { padding: 10px 14px; cursor: pointer; font-weight: 600; font-size: 14px; list-style: none; display: flex; gap: 8px; align-items: center; }
+details.scenario > summary::-webkit-details-marker { display: none; }
+details.scenario > summary::before { content: "▸"; transition: transform var(--t); color: var(--ink-3); }
+details.scenario[open] > summary::before { transform: rotate(90deg); }
+.scenario-body { padding: 0 14px 14px; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px 20px; font-size: 13.5px; }
+.scenario-body .quote { grid-column: 1 / -1; }
+.kv b { display: block; font-size: 11.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-3); font-weight: 600; }
+
+nav.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-top: 16px; overflow-x: auto; scrollbar-width: none; }
+nav.tabs button { border: 0; background: none; padding: 10px 14px; font-weight: 550; color: var(--ink-2); border-bottom: 2px solid transparent; white-space: nowrap; }
+nav.tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--ink); }
+
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 20px; padding: 16px 0 80px; }
+main { min-width: 0; }
+
+/* ─── Inspector ─── */
+aside.inspector { position: sticky; top: 12px; align-self: start; max-height: calc(100vh - 24px); overflow: auto; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; box-shadow: var(--shadow); }
+.insp-head { display: flex; justify-content: space-between; gap: 8px; align-items: flex-start; margin-bottom: 10px; }
+.insp-kind { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-3); font-weight: 600; }
+.insp-close { display: none; border: 0; background: var(--surface-2); border-radius: 999px; width: 30px; height: 30px; }
+.insp-body > * + * { margin-top: 10px; }
+.insp-empty { color: var(--ink-3); font-size: 13.5px; }
+.prov { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; font-size: 12.5px; }
+.prov dt { color: var(--ink-3); } .prov dd { margin: 0; }
+
+/* ─── Common components ─── */
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; }
+.card.tight { padding: 10px 12px; }
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.stack > * + * { margin-top: 12px; }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.spread { display: flex; justify-content: space-between; gap: 10px; align-items: center; flex-wrap: wrap; }
+.badge { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 650; border-radius: 999px; padding: 2px 9px; border: 1px solid transparent; white-space: nowrap; }
+.b-ai { background: var(--ai-bg); color: var(--ai); border-color: var(--ai-line); }
+.b-code { background: var(--code-bg); color: var(--code); border-color: var(--code-line); }
+.b-user { background: var(--user-bg); color: var(--user); border-color: var(--line-2); }
+.b-data { background: var(--data-bg); color: var(--data); border-color: var(--data-line); }
+.b-ext { background: var(--ext-bg); color: var(--ext); border-color: var(--ext-line); }
+.b-bad { background: var(--bad-bg); color: var(--bad); border-color: var(--bad); }
+.b-ok { background: var(--ok-bg); color: var(--ok); border-color: var(--data-line); }
+.b-time { background: var(--surface-2); color: var(--ink-2); border-color: var(--line); font-family: var(--mono); font-weight: 500; }
+.chip { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; border: 1px solid var(--line-2); background: var(--surface); border-radius: 999px; padding: 4px 11px; }
+button.chip:hover { border-color: var(--ink-3); }
+.chip.on { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.btn { border: 1px solid var(--line-2); background: var(--surface); border-radius: 10px; padding: 7px 13px; font-size: 13.5px; font-weight: 550; display: inline-flex; gap: 6px; align-items: center; }
+.btn:hover { border-color: var(--ink-3); }
+.btn.primary { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.btn:disabled { opacity: .45; cursor: default; }
+.seg { display: inline-flex; border: 1px solid var(--line-2); border-radius: 10px; overflow: hidden; }
+.seg button { border: 0; background: var(--surface); padding: 6px 12px; font-size: 13px; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+.link { border: 0; background: none; color: var(--code); padding: 0; text-decoration: underline; text-underline-offset: 2px; font-size: inherit; }
+.clickable { cursor: pointer; transition: border-color var(--t), box-shadow var(--t); }
+.clickable:hover { border-color: var(--ink-3); }
+table.t { width: 100%; border-collapse: collapse; font-size: 13px; }
+table.t th, table.t td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+table.t th { font-size: 11.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-3); font-weight: 600; }
+table.t td.num, table.t th.num { text-align: right; font-variant-numeric: tabular-nums; }
+.tscroll { overflow-x: auto; }
+.strike { text-decoration: line-through; color: var(--ink-3); }
+.ok { color: var(--ok); } .bad { color: var(--bad); }
+.tag { font-size: 11.5px; color: var(--ink-2); background: var(--surface-2); border-radius: 6px; padding: 1px 7px; display: inline-block; }
+.tag.ai { color: var(--ai); background: var(--ai-bg); } .tag.code { color: var(--code); background: var(--code-bg); }
+.note { font-size: 13px; border-left: 3px solid var(--line-2); padding: 4px 0 4px 10px; color: var(--ink-2); }
+.note.ai { border-color: var(--ai); } .note.code { border-color: var(--code); } .note.ext { border-color: var(--ext); }
+.bar { height: 8px; background: var(--surface-2); border-radius: 999px; overflow: hidden; }
+.bar > i { display: block; height: 100%; background: var(--code); border-radius: 999px; transition: width var(--t); }
+
+/* ─── Pipeline ─── */
+.rail-wrap { position: sticky; top: 0; z-index: 20; background: var(--bg); padding: 10px 0 8px; border-bottom: 1px solid var(--line); }
+.rail { display: grid; grid-template-columns: repeat(11, minmax(0, 1fr)); gap: 4px; }
+.rail button { position: relative; border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 6px 6px 7px; text-align: left; min-width: 0; transition: border-color var(--t), background var(--t), opacity var(--t); }
+.rail button .num { font-size: 11px; font-weight: 700; color: var(--ink-3); display: flex; justify-content: space-between; align-items: center; }
+.rail button .nm { display: block; font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rail button .rl { display: block; height: 3px; border-radius: 3px; margin-top: 5px; background: var(--code); }
+.rail button[data-role="ai"] .rl { background: var(--ai); }
+.rail button[data-role="out"] .rl { background: var(--data); }
+.rail button.mix .rl { background: linear-gradient(90deg, var(--code) 50%, var(--ai) 50%); }
+.rail button.mix-ai .rl { background: linear-gradient(90deg, var(--ai) 50%, var(--code) 50%); }
+.rail button[aria-current="step"] { border-color: var(--ink); background: var(--surface-2); }
+.rail button.done .num::after { content: "✓"; color: var(--ok); }
+.rail .tdot { position: absolute; top: -4px; right: -4px; width: 11px; height: 11px; border-radius: 50%; background: var(--hl); border: 2px solid var(--bg); display: none; }
+.rail button.traced .tdot { display: block; }
+.controls { display: flex; gap: 8px; align-items: center; margin-top: 8px; flex-wrap: wrap; }
+.controls .grow { flex: 1; }
+.flowline { height: 2px; margin-top: 6px; background-image: linear-gradient(90deg, var(--line-2) 50%, transparent 50%); background-size: 10px 2px; opacity: 0; }
+.playing .flowline { opacity: 1; animation: flow 1s linear infinite; }
+@keyframes flow { to { background-position: 10px 0; } }
+
+.step { padding-top: 18px; animation: fadeIn var(--t) ease-out; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.step-head { display: flex; gap: 12px; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; }
+.step-head .ttl { display: flex; gap: 10px; align-items: baseline; }
+.step-head .big { font-size: 13px; font-weight: 700; color: var(--ink-3); }
+.headline { font-size: 17px; margin-top: 6px; max-width: 75ch; }
+.ipo { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; gap: 8px; align-items: stretch; margin-top: 14px; }
+.ipo .col { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 8px 12px; font-size: 13px; }
+.ipo .col ul { margin: 4px 0 0; padding-left: 16px; }
+.ipo .arr { align-self: center; color: var(--ink-3); }
+.ipo .col.proc { border-color: var(--code-line); background: var(--code-bg); }
+.ipo .col.proc.ai { border-color: var(--ai-line); background: var(--ai-bg); }
+.datastrip { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-top: 12px; font-size: 12px; }
+.dtile { border: 1px dashed var(--line-2); background: var(--surface); color: var(--ink-3); border-radius: 8px; padding: 3px 9px; font-family: var(--mono); font-size: 11.5px; transition: all var(--t); }
+.dtile.lit { border-style: solid; border-color: var(--data-line); background: var(--data-bg); color: var(--data); }
+.dtile.lit.w { box-shadow: inset 0 -2px 0 var(--data); }
+.visual { margin-top: 16px; }
+
+/* Step 1 */
+.chat { background: var(--user-bg); border-radius: 16px 16px 16px 4px; padding: 12px 14px; font-size: 15px; line-height: 1.65; max-width: 720px; }
+.phr { background: linear-gradient(transparent 55%, var(--hl) 55%); border-radius: 2px; cursor: pointer; border: 0; padding: 0; font: inherit; color: inherit; text-align: left; }
+.phr:hover, .phr.on { background: var(--hl); }
+.ccards { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 10px; }
+.ccard { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 10px 12px; font-size: 13px; text-align: left; }
+.ccard .ct { font-weight: 650; font-size: 13.5px; }
+.ccard.hard { border-left: 3px solid var(--ink); }
+.ccard.soft { border-left: 3px solid var(--line-2); }
+.ccard.on { border-color: var(--ink); box-shadow: 0 0 0 2px var(--hl); }
+.qcard { border: 1px solid var(--ai-line); background: var(--surface); border-radius: var(--radius); padding: 14px 16px; }
+.qopts { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0; }
+.qopt { border: 1px solid var(--line-2); border-radius: 999px; padding: 5px 12px; font-size: 13px; background: var(--surface); }
+.qopt.sel { background: var(--ai); color: #fff; border-color: var(--ai); }
+.why { background: var(--surface-2); border-radius: var(--radius-sm); padding: 10px 12px; font-size: 13px; }
+
+/* Step 2 dials */
+.dgroups { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+.dgroup h3 { margin-bottom: 8px; }
+.dial { padding: 8px 0; border-top: 1px solid var(--line); cursor: pointer; }
+.dial:first-of-type { border-top: 0; }
+.dial .dn { display: flex; justify-content: space-between; font-size: 13px; font-weight: 600; gap: 8px; }
+.dial .dv { font-family: var(--mono); font-size: 12px; color: var(--ink-2); text-align: right; }
+.dial .dv b { color: var(--code); }
+.track { position: relative; height: 6px; background: var(--surface-2); border-radius: 99px; margin: 8px 4px 4px; }
+.track .def { position: absolute; top: -3px; width: 2px; height: 12px; background: var(--ink-3); opacity: .5; }
+.track .fin { position: absolute; top: -4px; width: 14px; height: 14px; margin-left: -7px; border-radius: 50%; background: var(--code); border: 2px solid var(--surface); box-shadow: 0 0 0 1px var(--code); transition: left var(--t); }
+.track .fill { position: absolute; top: 0; height: 100%; background: var(--code-line); border-radius: 99px; transition: all var(--t); }
+.moved { font-size: 11.5px; color: var(--ai); margin-top: 3px; }
+.moved::before { content: "↳ "; }
+.pillchg { display: flex; gap: 6px; align-items: center; font-size: 12px; margin-top: 4px; flex-wrap: wrap; }
+.dial.on { background: color-mix(in srgb, var(--hl) 35%, transparent); }
+
+/* Step 3 map/route */
+.mapbox { align-self: start; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 8px; }
+svg.map { width: 100%; height: auto; display: block; }
+svg .land { fill: var(--surface-2); stroke: var(--line-2); stroke-width: .4; }
+svg .edge { stroke: var(--line-2); stroke-width: .5; fill: none; }
+svg .edge-lbl { font-size: 2.1px; fill: var(--ink-3); font-family: var(--font); }
+svg .route { stroke: var(--code); stroke-width: 1.1; fill: none; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 2 1.2; }
+svg .city circle { stroke: var(--surface); stroke-width: .5; }
+svg .city text { font-size: 2.8px; fill: var(--ink); font-family: var(--font); font-weight: 600; }
+svg .city.base circle { fill: var(--code); }
+svg .city.daytrip circle { fill: var(--data); }
+svg .city.alt circle { fill: var(--ai); }
+svg .city.rejected circle { fill: var(--bad); opacity: .7; }
+svg .city.rejected text { fill: var(--ink-3); text-decoration: line-through; }
+.lb .tie { background: color-mix(in srgb, var(--ai-bg) 70%, transparent); }
+.lb .inv td { color: var(--ink-3); }
+.lb .inv td.ord { text-decoration: line-through; }
+.lb .win td:first-child { box-shadow: inset 3px 0 0 var(--code); }
+.cls { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px; }
+
+/* Step 4 nights */
+.nbar { display: flex; border-radius: 10px; overflow: hidden; border: 1px solid var(--line); }
+.nbar .seg-n { padding: 8px 6px; font-size: 12px; text-align: center; border-right: 1px solid var(--surface); color: #fff; min-width: 0; }
+.nbar .seg-n:last-child { border-right: 0; }
+.nbar .seg-n b { display: block; font-size: 13px; }
+.nbar .seg-n span { opacity: .85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+.ticks { display: grid; font-size: 10.5px; color: var(--ink-3); margin-top: 4px; }
+
+/* Step 6 funnel */
+.funnel .lay { display: grid; grid-template-columns: 230px 1fr 60px; gap: 10px; align-items: center; padding: 4px 0; cursor: pointer; border-radius: 8px; }
+.funnel .lay:hover { background: var(--surface-2); }
+.funnel .fb { height: 22px; background: var(--code-line); border-radius: 6px; transition: width var(--t); }
+.funnel .lay:last-child .fb { background: var(--data); }
+
+/* Step 7 assign */
+.frames { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.assign { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 14px; margin-top: 12px; }
+.pool .grp { margin-bottom: 10px; }
+.pc { font-size: 12.5px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 5px 8px; margin-top: 4px; transition: opacity var(--t); }
+.pc.used { opacity: .35; }
+.dcol { background: var(--surface-2); border-radius: var(--radius-sm); padding: 8px; min-height: 120px; }
+.dcol .pc { border-color: var(--ai-line); animation: drop var(--t) ease-out both; }
+@keyframes drop { from { opacity: 0; transform: translateX(-12px); } to { opacity: 1; transform: none; } }
+.guard { display: flex; gap: 10px; flex-wrap: wrap; font-size: 13px; }
+
+/* Step 8 gantt */
+.gantt { position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 12px 12px; }
+.g-axis { position: relative; height: 16px; font-size: 10.5px; color: var(--ink-3); margin-left: 150px; }
+.g-axis span { position: absolute; transform: translateX(-50%); }
+.g-row { display: grid; grid-template-columns: 150px 1fr; align-items: center; min-height: 28px; font-size: 12px; }
+.g-row .lbl { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 8px; }
+.g-lane { position: relative; height: 24px; border-left: 1px solid var(--line); }
+.g-band { position: absolute; top: 0; bottom: 0; background: var(--data-bg); opacity: .8; }
+.g-crowd { position: absolute; inset: 0; width: 100%; height: 100%; }
+.g-crowd path { fill: var(--ext); opacity: .18; }
+.g-blk { position: absolute; top: 3px; bottom: 3px; border-radius: 5px; font-size: 11px; padding: 0 5px; display: flex; align-items: center; overflow: hidden; white-space: nowrap; color: #fff; }
+.k-activity { background: var(--code); } .k-meal { background: var(--data); } .k-coffee { background: #8b5a2b; } .k-shop { background: var(--ai); }
+.k-transfer { background: var(--surface-2); color: var(--ink-2); border: 1px solid var(--line-2); }
+.k-buffer { background: repeating-linear-gradient(45deg, var(--line) 0 3px, transparent 3px 6px); color: var(--ink-2); }
+.k-free { background: var(--surface-2); color: var(--ink-2); border: 1px dashed var(--line-2); }
+.pen { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.pen .opt { border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 10px 12px; font-size: 13px; }
+.pen .opt.win { border-color: var(--ok); box-shadow: 0 0 0 2px var(--ok-bg); }
+
+/* Step 9 */
+.checks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.chk { display: flex; gap: 8px; align-items: center; font-size: 13px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; cursor: pointer; }
+.chk .ic { width: 20px; text-align: center; font-weight: 700; }
+.ba { display: grid; grid-template-columns: 1fr auto 1fr; gap: 10px; align-items: center; font-size: 13px; }
+.ba .b { background: var(--bad-bg); border: 1px solid var(--bad); border-radius: 8px; padding: 8px 10px; }
+.ba .a { background: var(--ok-bg); border: 1px solid var(--data-line); border-radius: 8px; padding: 8px 10px; }
+.loop { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; font-size: 12.5px; }
+.loop span.n { background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; }
+
+/* Step 10 */
+.narr { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.tok { background: var(--ai-bg); color: var(--ai); border-radius: 4px; padding: 0 3px; font-family: var(--mono); font-size: 12px; }
+.rendered { background: var(--code-bg); border-radius: 4px; padding: 0 3px; }
+.gl { display: flex; gap: 8px; font-size: 12.5px; padding: 3px 0; }
+
+/* Output */
+.routestrip { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; font-size: 13px; }
+.routestrip .leg { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 6px 10px; }
+.routestrip .leg b { display: block; }
+.routestrip .tr { color: var(--ink-3); font-size: 11.5px; text-align: center; max-width: 110px; line-height: 1.2; }
+.daycards { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
+.dcard { text-align: left; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 10px 12px; font-size: 12.5px; }
+.dcard:hover { border-color: var(--ink-3); }
+.dcard .dh { display: flex; justify-content: space-between; gap: 6px; font-size: 12px; color: var(--ink-3); }
+.dcard .th { font-weight: 650; font-size: 13.5px; margin: 4px 0; }
+.dcard ul { margin: 0; padding-left: 16px; color: var(--ink-2); }
+.dt-arrival { color: var(--data) !important; } .dt-travel { color: var(--ext) !important; } .dt-daytrip { color: var(--ai) !important; } .dt-departure { color: var(--bad) !important; } .dt-full { color: var(--code) !important; }
+
+.ph { padding: 40px 0; color: var(--ink-3); }
+
+/* ─── Responsive ─── */
+@media (max-width: 1100px) {
+  .layout { grid-template-columns: minmax(0, 1fr); }
+  aside.inspector { position: fixed; left: 0; right: 0; bottom: 0; top: auto; max-height: 62vh; border-radius: 18px 18px 0 0; z-index: 50; transform: translateY(105%); transition: transform var(--t); }
+  aside.inspector.open { transform: none; }
+  .insp-close { display: inline-block; }
+  .frames { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 760px) {
+  .wrap { padding: 0 16px; }
+  h1 { font-size: 22px; }
+  .top-meta { align-items: flex-start; }
+  .rail-wrap { position: static; }
+  .rail { grid-template-columns: 1fr; gap: 3px; }
+  .rail button { display: flex; gap: 10px; align-items: center; padding: 6px 10px; }
+  .rail button .num { min-width: 28px; }
+  .rail button .rl { width: 4px; height: 18px; margin: 0 0 0 auto; order: 3; }
+  .ipo { grid-template-columns: 1fr; }
+  .ipo .arr { transform: rotate(90deg); justify-self: center; }
+  .grid2, .grid3, .narr, .pen, .checks { grid-template-columns: 1fr; }
+  .assign { grid-template-columns: 1fr; }
+  .frames { grid-template-columns: 1fr; }
+  .funnel .lay { grid-template-columns: 1fr 50px; }
+  .funnel .lay .fbw { grid-column: 1 / -1; }
+  .g-row { grid-template-columns: 90px 1fr; } .g-axis { margin-left: 90px; }
+  .ba { grid-template-columns: 1fr; } .ba .arr { transform: rotate(90deg); justify-self: center; }
+  .illus { right: 8px; bottom: 8px; }
+}
+@media (max-width: 760px) { .g-blk { font-size: 0; padding: 0; } .g-axis { font-size: 9.5px; } }
+
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top" id="header"></header>
+  <nav class="tabs" id="tabs" role="tablist" aria-label="Sections"></nav>
+  <div class="layout">
+    <main id="panel" role="tabpanel"></main>
+    <aside class="inspector" id="insp" aria-label="Inspector" aria-live="polite">
+      <div class="insp-head"><div><div class="insp-kind">Inspector</div><h3>Click anything</h3></div></div>
+      <p class="insp-empty">Select a constraint, dial, data table, route, check or day to see its details here — JSON, history, schema, sample rows, formulas and provenance.</p>
+    </aside>
+  </div>
+</div>
+<div class="illus" id="illus"></div>
+<script>
+// SCENARIO — single source of truth for "Inside the Planner".
+// Illustrative data for demonstration. Values marked est:true are estimates.
+// Every visual in the page is derived from this object.
+
+const SCENARIO = {
+  meta: {
+    title: "Inside the Planner",
+    pitch: "How an AI-assisted trip planner turns one sentence into a validated, editable itinerary.",
+    coreMessage: "Software makes it possible, AI makes it personal.",
+    flowLine: "You say it → it becomes a constraint → constraints set the dials → the planner reads the dials.",
+    dataLabel: "Illustrative data for demonstration",
+    aiJobs: [
+      "Turn chat into typed constraints",
+      "Choose and group activities into days from a code-supplied candidate pool",
+      "Break close ties / pick from a code-made shortlist (route tie-break, hotel area)",
+      "Write narration grounded in a fact sheet ({{poi:ID}} tokens rendered by code)"
+    ],
+    codeJobs: [
+      "Trip Dials", "Gateways", "City classification & order", "Nights", "Hotel-area shortlist",
+      "Candidate filtering", "Scheduling", "Travel times", "Validation & repair", "Grounding checks", "Diffs"
+    ]
+  },
+
+  travellers: {
+    party: "Couple, early 30s", from: "Mumbai", firstTimeInJapan: true, count: 2,
+    dietary: [{ traveller: "T2", diet: "vegetarian" }]
+  },
+
+  trip: {
+    startDate: "2026-11-10", endDate: "2026-11-24", days: 15, nights: 14,
+    season: "Autumn foliage",
+    budget: { band: "mid-range", splurge: "1 night ryokan with private onsen" }
+  },
+
+  form: {
+    interests: ["food", "photography", "design/architecture", "onsen", "light hiking"],
+    pace: "balanced"
+  },
+
+  chatMessage:
+    "We're not morning people, so nothing before 10 please. One of us is vegetarian. We'd love one really special ryokan night with a private onsen, great autumn colours, and a few quiet spots away from crowds. We love coffee and design shops. Happy to walk a lot, but we don't want to change hotels every day.",
+
+  // ─── Step ① Understand ───────────────────────────────────────────
+  weights: { low: 0.2, medium: 0.5, high: 0.8, hard: "filter" },
+  constraintTypes: [
+    "time_window", "dietary", "stay_requirement", "interest", "avoid", "movement", "stay_stability", "accessibility", "budget"
+  ],
+  askRule: "Ask only when top options are close AND differ on an unknown preference; max one question at a time.",
+
+  constraints: [
+    { id: "c_daystart", chip: "Nothing before 10", phrase: "nothing before 10 please", type: "time_window",
+      json: { type: "time_window", field: "day_start", op: ">=", value: "10:00" }, strength: "soft", weight: "high",
+      dials: ["dayStart"], steps: [2, 6, 8, 9, 10] },
+    { id: "c_veg", chip: "Vegetarian", phrase: "One of us is vegetarian", type: "dietary",
+      json: { type: "dietary", diet: "vegetarian", travellers: ["T2"], applies_to: "all_meals" }, strength: "hard", weight: "hard",
+      dials: ["dietary"], steps: [2, 6, 7, 8, 9, 10] },
+    { id: "c_ryokan", chip: "Ryokan + private onsen", phrase: "one really special ryokan night with a private onsen", type: "stay_requirement",
+      json: { type: "stay_requirement", kind: "ryokan", feature: "private_onsen", nights: 1, budget: "splurge" }, strength: "hard", weight: "hard",
+      dials: ["budget"], steps: [3, 4, 5, 9] },
+    { id: "c_foliage", chip: "Autumn colours", phrase: "great autumn colours", type: "interest",
+      json: { type: "interest", tag: "foliage", level: "high" }, strength: "soft", weight: "high",
+      dials: ["interestWeights"], steps: [3, 6, 7, 8] },
+    { id: "c_quiet", chip: "Quiet spots", phrase: "a few quiet spots away from crowds", type: "avoid",
+      json: { type: "avoid", tag: "crowded", freeform: "quiet spots", level: "medium" }, strength: "soft", weight: "medium",
+      dials: ["avoidTags"], steps: [2, 6, 7, 8, 9] },
+    { id: "c_coffee_design", chip: "Coffee + design", phrase: "We love coffee and design shops", type: "interest",
+      json: { type: "interest", tags: ["coffee", "design_shops"], level: "medium" }, strength: "soft", weight: "medium",
+      dials: ["interestWeights"], steps: [5, 6, 7, 8] },
+    { id: "c_walk", chip: "Walks a lot", phrase: "Happy to walk a lot", type: "movement",
+      json: { type: "movement", field: "walking_limit", direction: "raise" }, strength: "soft", weight: "medium",
+      dials: ["walkingLimit", "maxContinuousWalk", "taxiThreshold"], steps: [2, 5, 8, 9] },
+    { id: "c_hotels", chip: "Don't change hotels every day", phrase: "we don't want to change hotels every day", type: "stay_stability",
+      json: { type: "stay_stability", field: "min_nights_per_base", op: ">=", value: 2, except: ["c_ryokan"] }, strength: "soft", weight: "high",
+      dials: ["minNights", "maxHotelChanges"], steps: [2, 3, 4, 9] }
+  ],
+  traceChips: ["c_veg", "c_daystart", "c_hotels", "c_quiet", "c_walk"],
+
+  clarifyingQuestion: {
+    trigger: "Route optimiser (Step ③): top two routes score within 3.8% and differ mainly on where the ryokan night goes.",
+    question: "How important is seeing Mt Fuji?",
+    options: [
+      { label: "Must-see", effect: "Hakone ryokan kept; extra Fuji-view slot + a second viewpoint attempt on Day 5 afternoon." },
+      { label: "Nice if the weather is clear", effect: "Hakone ryokan kept; weather-dependent Fuji viewpoint Day 6 morning, indoor backup if cloudy." },
+      { label: "Skip", effect: "Ryokan moves to Yamanaka Onsen near Kanazawa; one fewer hotel change, no Fuji." }
+    ],
+    selected: "Nice if the weather is clear",
+    notAsked: [
+      { q: "Hotel star rating", default: "Mid-range, 3–4★" },
+      { q: "Rail pass?", default: "Priced per leg" },
+      { q: "Dinner time", default: "19:00–20:30" },
+      { q: "Guided tours?", default: "Self-guided unless needed" },
+      { q: "Shopping budget", default: "Not planned" },
+      { q: "Luggage forwarding", default: "Suggested on long legs" }
+    ]
+  },
+
+  // ─── Step ② Trip Dials ───────────────────────────────────────────
+  dialPresets: {
+    "Balanced": { activitiesPerDay: 4, freeTime: 60, walkingLimit: 12 },
+    "Relaxed": { activitiesPerDay: 3, freeTime: 120, buffer: 20 },
+    "Late Riser": { dayStart: "10:00", dayEnd: "21:30" },
+    "Walks a Lot": { walkingLimit: 18, maxContinuousWalk: 45, taxiThreshold: 30 },
+    "Vegetarian": { dietary: "vegetarian" },
+    "Travelling with Elderly": { walkingLimit: 6, maxContinuousWalk: 15, accessibility: "step-free", activitiesPerDay: 3 }
+  },
+  presetsApplied: ["Balanced"],
+  dialGroups: [
+    { id: "time", icon: "⏰", name: "Time", dials: [
+      { id: "dayStart", name: "Day Start", unit: "time", default: "09:00", preset: "09:00", chat: "10:00", final: "10:00", movedBy: [{ c: "c_daystart", note: "set by 'not morning people'" }] },
+      { id: "dayEnd", name: "Day End", unit: "time", default: "21:00", preset: "21:00", chat: null, final: "21:00", movedBy: [] },
+      { id: "mealWindows", name: "Meal Windows", unit: "range", default: "L 12:00–13:30 · D 18:30–20:00", preset: "same", chat: "L 12:30–14:00 · D 19:00–20:30", final: "L 12:30–14:00 · D 19:00–20:30", movedBy: [{ c: "c_daystart", note: "shifted +30 min with later start" }] },
+      { id: "returnBy", name: "Return By", unit: "time", default: "22:00", preset: "22:00", chat: null, final: "22:00", movedBy: [] }
+    ]},
+    { id: "load", icon: "🎒", name: "Load", dials: [
+      { id: "activitiesPerDay", name: "Activities per Day", unit: "count", default: 4, preset: 4, chat: null, final: 4, movedBy: [] },
+      { id: "freeTime", name: "Free Time", unit: "min/day", default: 60, preset: 60, chat: null, final: 60, movedBy: [] },
+      { id: "buffer", name: "Buffer", unit: "min/transfer", default: 15, preset: 15, chat: null, final: 15, movedBy: [] }
+    ]},
+    { id: "movement", icon: "🚶", name: "Movement", dials: [
+      { id: "walkingLimit", name: "Walking Limit", unit: "km/day", default: 10, preset: 12, chat: 16, final: 16, movedBy: [{ c: "c_walk", note: "raised by 'happy to walk a lot'" }] },
+      { id: "maxContinuousWalk", name: "Max Continuous Walk", unit: "min", default: 25, preset: 25, chat: 40, final: 40, movedBy: [{ c: "c_walk", note: "raised by 'happy to walk a lot'" }] },
+      { id: "transitPerDay", name: "Transit per Day", unit: "h", default: 2, preset: 2, chat: null, final: 2, movedBy: [] },
+      { id: "taxiThreshold", name: "Taxi Threshold", unit: "min walk", default: 20, preset: 20, chat: 30, final: 30, movedBy: [{ c: "c_walk", note: "taxis suggested only for walks > 30 min" }] }
+    ]},
+    { id: "stay", icon: "🏨", name: "Stay", dials: [
+      { id: "minNights", name: "Min Nights per Base", unit: "nights", default: 1, preset: 1, chat: 2, final: 2, movedBy: [{ c: "c_hotels", note: "set by 'don't change hotels every day' (splurge ryokan exempt)" }] },
+      { id: "maxHotelChanges", name: "Max Hotel Changes", unit: "count", default: 7, preset: 7, chat: 5, final: 5, movedBy: [{ c: "c_hotels", note: "capped by 'don't change hotels every day'" }] }
+    ]},
+    { id: "filters", icon: "🍽", name: "Filters", dials: [
+      { id: "dietary", name: "Dietary", unit: "tag", default: "none", preset: "none", chat: "vegetarian (1 traveller)", final: "vegetarian (1 traveller)", movedBy: [{ c: "c_veg", note: "hard filter on every meal" }] },
+      { id: "accessibility", name: "Accessibility", unit: "tag", default: "none", preset: "none", chat: null, final: "none", movedBy: [] },
+      { id: "budget", name: "Budget", unit: "band", default: "mid", preset: "mid", chat: "mid + 1 splurge night", final: "mid + 1 splurge night", movedBy: [{ c: "c_ryokan", note: "one splurge night reserved for ryokan" }] },
+      { id: "avoidTags", name: "Avoid Tags", unit: "tags", default: "[]", preset: "[]", chat: "[crowded]", final: "[crowded]", movedBy: [{ c: "c_quiet", note: "set by 'quiet spots away from crowds'" }] }
+    ]},
+    { id: "taste", icon: "❤️", name: "Taste", dials: [
+      { id: "interestWeights", name: "Interest Weights", unit: "weights", default: { food: 0.5, photography: 0.5, design: 0.5, onsen: 0.5, hiking: 0.5, foliage: 0.2, coffee: 0.2, history: 0.5, nightlife: 0.2 },
+        preset: "form interests → 0.5", chat: { foliage: 0.8, coffee: 0.5, design: 0.5 },
+        final: { food: 0.5, photography: 0.5, design: 0.5, onsen: 0.5, hiking: 0.5, foliage: 0.8, coffee: 0.5, history: 0.5, nightlife: 0.2 },
+        movedBy: [{ c: "c_foliage", note: "foliage → 0.8" }, { c: "c_coffee_design", note: "coffee → 0.5" }] }
+    ]}
+  ],
+  dialRule: "Strictest or most explicit wins.",
+  dialTagline: "Preferences are unlimited; dials are few. The planner only reads the dials.",
+
+  // ─── Step ③ Gateways & Route ─────────────────────────────────────
+  gateways: {
+    options: [
+      { id: "rt", name: "Round-trip Tokyo (HND ⇄ HND)", fareDeltaINR: 0, backtrackH: 2.5, halfDayLost: true, timeSavedH: 0, est: true },
+      { id: "oj", name: "Open-jaw Tokyo (HND) → Osaka (KIX)", fareDeltaINR: 6500, backtrackH: 0, halfDayLost: false, timeSavedH: 6, est: true }
+    ],
+    winner: "oj",
+    reason: "Open-jaw avoids ~2.5 h backtracking + half a day for ~₹6,500 more (est.)."
+  },
+  cities: [
+    { id: "tokyo", name: "Tokyo", x: 88, y: 44, label: "r", role: "base", reason: "Arrival gateway; high demand for food, design, coffee." },
+    { id: "hakone", name: "Hakone", x: 77, y: 56, label: "b", role: "base", reason: "Splurge ryokan w/ private onsen + Fuji views (tie resolved by user)." },
+    { id: "kanazawa", name: "Kanazawa", x: 50, y: 16, label: "r", role: "base", reason: "Kenroku-en foliage, design, crafts; Hokuriku Shinkansen from Tokyo." },
+    { id: "takayama", name: "Takayama", x: 63, y: 32, label: "r", role: "base", reason: "Old town + gateway to Shirakawa-go; en route to Kyoto." },
+    { id: "shirakawago", name: "Shirakawa-go", x: 58, y: 23, label: "r", role: "daytrip", reason: "~50 min from Takayama; no need to overnight." },
+    { id: "kyoto", name: "Kyoto", x: 42, y: 44, label: "r", role: "base", reason: "Peak foliage late Nov; highest POI demand." },
+    { id: "nara", name: "Nara", x: 46, y: 58, label: "r", role: "daytrip", reason: "~45 min from Kyoto; demand < 1 day." },
+    { id: "osaka", name: "Osaka", x: 34, y: 54, label: "l", role: "base", reason: "Exit gateway (KIX); food finale." },
+    { id: "yamanaka", name: "Yamanaka Onsen", x: 40, y: 11, label: "l", role: "alt", reason: "Onsen town near Kanazawa — alternative ryokan location in route R2 (no Fuji, one fewer hotel change)." },
+    { id: "hiroshima", name: "Hiroshima", x: 11, y: 58, label: "r", role: "rejected", reason: "Adds ~4h of travel for 1 day; with 'don't change hotels every day', we kept longer stays. Add 2 days to include it.", rule: "min_nights_per_base ≥ 2 + transit budget" },
+    { id: "nikko", name: "Nikko", x: 88, y: 26, label: "l", role: "rejected", reason: "Backtracking: out-and-back from Tokyo against the westward route.", rule: "backtracking penalty" },
+    { id: "kawaguchiko", name: "Kawaguchiko", x: 76, y: 45, label: "b", role: "rejected", reason: "Overlaps with Hakone for Fuji views.", rule: "duplicate-purpose" }
+  ],
+  edges: [
+    { from: "tokyo", to: "hakone", mins: 100, mode: "Romancecar", est: true },
+    { from: "hakone", to: "kanazawa", mins: 285, mode: "Train via Tokyo (Shinkansen)", est: true },
+    { from: "tokyo", to: "kanazawa", mins: 180, mode: "Hokuriku Shinkansen", est: true },
+    { from: "kanazawa", to: "takayama", mins: 135, mode: "Highway bus", est: true },
+    { from: "takayama", to: "shirakawago", mins: 50, mode: "Bus", est: true },
+    { from: "takayama", to: "kyoto", mins: 225, mode: "Hida Ltd Exp + Shinkansen", est: true },
+    { from: "tokyo", to: "kyoto", mins: 135, mode: "Tokaido Shinkansen", est: false },
+    { from: "kyoto", to: "nara", mins: 45, mode: "Kintetsu", est: true },
+    { from: "kyoto", to: "osaka", mins: 30, mode: "JR Special Rapid", est: true },
+    { from: "osaka", to: "hiroshima", mins: 90, mode: "Sanyo Shinkansen", est: true },
+    { from: "tokyo", to: "nikko", mins: 120, mode: "Tobu Ltd Exp", est: true },
+    { from: "kanazawa", to: "yamanaka", mins: 50, mode: "Train + bus", est: true }
+  ],
+  routes: [
+    { id: "R1", order: ["Tokyo", "Hakone", "Kanazawa", "Takayama", "Kyoto", "Osaka"], transitH: 13.8, backtrack: 1.2, fatigue: 3.1, hotelChanges: 5, fit: 9.2, total: 86.4, valid: true, tie: true, winner: true, note: "Ryokan in Hakone — possible Fuji views, close to Tokyo" },
+    { id: "R2", order: ["Tokyo", "Kanazawa", "Yamanaka Onsen", "Takayama", "Kyoto", "Osaka"], transitH: 12.9, backtrack: 0.4, fatigue: 2.8, hotelChanges: 4, fit: 8.1, total: 83.2, valid: true, tie: true, winner: false, note: "Ryokan near Kanazawa — no Fuji, one fewer hotel change" },
+    { id: "R3", order: ["Tokyo", "Hakone", "Kyoto", "Takayama", "Kanazawa", "Osaka"], transitH: 15.6, backtrack: 3.4, fatigue: 4.0, hotelChanges: 5, fit: 8.6, total: 74.9, valid: true },
+    { id: "R4", order: ["Tokyo", "Nikko", "Hakone", "Kanazawa", "Kyoto", "Osaka"], transitH: 16.2, backtrack: 4.5, fatigue: 4.4, hotelChanges: 6, fit: 7.9, total: 68.3, valid: false, violated: "Max Hotel Changes ≤ 5" },
+    { id: "R5", order: ["Tokyo", "Hakone", "Kanazawa", "Takayama", "Kyoto", "Hiroshima", "Osaka"], transitH: 17.9, backtrack: 2.0, fatigue: 5.2, hotelChanges: 6, fit: 8.4, total: 66.0, valid: false, violated: "Min Nights per Base ≥ 2 (Hiroshima 1N) + Max Hotel Changes" },
+    { id: "R6", order: ["Tokyo", "Kawaguchiko", "Hakone", "Kanazawa", "Kyoto", "Osaka"], transitH: 14.4, backtrack: 1.5, fatigue: 3.9, hotelChanges: 5, fit: 7.2, total: 70.1, valid: false, violated: "Min Nights per Base ≥ 2 (two 1-night stays)" }
+  ],
+  tieMarginPct: 3.8,
+
+  // ─── Step ④ Nights ───────────────────────────────────────────────
+  usableHoursPerDay: 9,
+  nightsDemand: [
+    { city: "Tokyo", poiHours: 31, demandDays: 3.4, minNights: 2, cap: 5, arrivalHalfDay: true, travelLoss: 0.5, fixed: null, nights: 4 },
+    { city: "Hakone", poiHours: 6, demandDays: 0.7, minNights: 1, cap: 1, arrivalHalfDay: false, travelLoss: 0.5, fixed: "Ryokan 1N (hard)", nights: 1 },
+    { city: "Kanazawa", poiHours: 13, demandDays: 1.4, minNights: 2, cap: 3, arrivalHalfDay: false, travelLoss: 0.5, fixed: null, nights: 2 },
+    { city: "Takayama", poiHours: 12, demandDays: 1.3, minNights: 2, cap: 3, arrivalHalfDay: false, travelLoss: 0.5, fixed: "Shirakawa-go day trip", nights: 2 },
+    { city: "Kyoto", poiHours: 38, demandDays: 4.2, minNights: 2, cap: 5, arrivalHalfDay: false, travelLoss: 0.5, fixed: "Nara day trip", nights: 4 },
+    { city: "Osaka", poiHours: 7, demandDays: 0.8, minNights: 1, cap: 2, arrivalHalfDay: false, travelLoss: 0.5, fixed: "Exit gateway (KIX)", nights: 1 }
+  ],
+  nightsNote: "Osaka 1N is below Min Nights (2) — allowed as the exit gateway night; soft constraint, logged.",
+  aiNudge: { proposed: "Kyoto +1 / Tokyo −1", result: "Rejected by code: Tokyo demand 3.4 days needs 4 nights with arrival half-day." },
+  hiroshimaTradeoff: {
+    text: "Adds ~4h of travel for 1 day; with 'don't change hotels every day', we kept longer stays. Add 2 days to include it.",
+    option: "Add 2 days"
+  },
+
+  legs: [
+    { city: "Tokyo", from: "2026-11-10", to: "2026-11-14", nights: 4, transferIn: "Flight BOM→HND", transferOut: "Romancecar ~1h40 (est.)" },
+    { city: "Hakone", from: "2026-11-14", to: "2026-11-15", nights: 1, splurge: true, transferOut: "Train via Tokyo ~4h45 (est.)" },
+    { city: "Kanazawa", from: "2026-11-15", to: "2026-11-17", nights: 2, transferOut: "Highway bus ~2h15 (est.)" },
+    { city: "Takayama", from: "2026-11-17", to: "2026-11-19", nights: 2, transferOut: "Hida Ltd Exp + Shinkansen ~3h45 (est.)" },
+    { city: "Kyoto", from: "2026-11-19", to: "2026-11-23", nights: 4, transferOut: "JR Special Rapid ~30 min (est.)" },
+    { city: "Osaka", from: "2026-11-23", to: "2026-11-24", nights: 1, transferOut: "Nankai to KIX ~45 min (est.) → Flight KIX→BOM" }
+  ],
+
+  // ─── Step ⑤ Stay ─────────────────────────────────────────────────
+  stays: [
+    { city: "Tokyo", candidates: [
+      { area: "Shibuya / Omotesando", travelMin: 22, walk: 9, price: "¥¥", vibe: "design, coffee, architecture" },
+      { area: "Shinjuku", travelMin: 24, walk: 7, price: "¥¥", vibe: "hub, busy nights" },
+      { area: "Asakusa", travelMin: 34, walk: 8, price: "¥", vibe: "traditional, far west-side" }],
+      pick: "Shibuya / Omotesando", reason: "Walkable to design shops and coffee; direct lines to most picks.",
+      examples: ["Hotel A (illustrative)", "Hotel B (illustrative)"], priceBand: "¥18–26k/night (est.)" },
+    { city: "Hakone", fixed: true, candidates: [{ area: "Gora / Miyanoshita", travelMin: 15, walk: 5, price: "¥¥¥¥", vibe: "ryokan with private onsen" }],
+      pick: "Gora / Miyanoshita", reason: "Fixed by ryokan + private onsen constraint.",
+      examples: ["Ryokan A (illustrative)", "Ryokan B (illustrative)"], priceBand: "¥65–90k/night incl. kaiseki (est.)" },
+    { city: "Kanazawa", candidates: [
+      { area: "Korinbo / Katamachi", travelMin: 14, walk: 9, price: "¥¥", vibe: "central, walk to Kenroku-en" },
+      { area: "Kanazawa Station", travelMin: 20, walk: 6, price: "¥¥", vibe: "convenient for bus out" }],
+      pick: "Korinbo / Katamachi", reason: "Walk to Kenroku-en, 21st Century Museum and Higashi Chaya.",
+      examples: ["Hotel C (illustrative)", "Hotel D (illustrative)"], priceBand: "¥14–20k/night (est.)" },
+    { city: "Takayama", candidates: [
+      { area: "Old Town (Sanmachi)", travelMin: 8, walk: 9, price: "¥¥", vibe: "quiet evenings, historic" },
+      { area: "Station area", travelMin: 12, walk: 7, price: "¥", vibe: "bus terminal for Shirakawa-go" }],
+      pick: "Station area", reason: "Bus terminal for Shirakawa-go at the door; old town 10 min walk.",
+      examples: ["Hotel E (illustrative)", "Hotel F (illustrative)"], priceBand: "¥12–18k/night (est.)" },
+    { city: "Kyoto", candidates: [
+      { area: "Downtown / Karasuma", travelMin: 21, walk: 9, price: "¥¥", vibe: "coffee, design shops, buses everywhere" },
+      { area: "Higashiyama", travelMin: 26, walk: 8, price: "¥¥¥", vibe: "atmospheric, crowded by day" },
+      { area: "Kyoto Station", travelMin: 23, walk: 6, price: "¥¥", vibe: "transport hub, Nara trains" }],
+      pick: "Downtown / Karasuma", reason: "Downtown: close to coffee and design shops, easy buses everywhere.",
+      examples: ["Hotel G (illustrative)", "Hotel H (illustrative)"], priceBand: "¥20–30k/night (est.)" },
+    { city: "Osaka", candidates: [
+      { area: "Namba", travelMin: 15, walk: 8, price: "¥¥", vibe: "food, Nankai to KIX" },
+      { area: "Umeda", travelMin: 18, walk: 7, price: "¥¥", vibe: "hub, Nakazakicho cafés nearby" }],
+      pick: "Namba", reason: "Food finale and direct Nankai line to KIX.",
+      examples: ["Hotel I (illustrative)", "Hotel J (illustrative)"], priceBand: "¥14–20k/night (est.)" }
+  ],
+
+  // ─── Step ⑥ Candidates (Kyoto) ───────────────────────────────────
+  funnel: [
+    { layer: "Catalogue (Kyoto + day-trip radius)", count: 1240, examples: [] },
+    { layer: "Open on trip dates", count: 1105, examples: [{ name: "Shugakuin Imperial Villa", why: "Tours full / reservation-only on dates (est.)" }] },
+    { layer: "Fits day window 10:00–21:00", count: 960, examples: [{ name: "Early-morning Zen meditation", why: "Starts 06:30 — before Day Start" }] },
+    { layer: "Vegetarian meals nearby", count: 870, examples: [{ name: "Fish-market food crawl", why: "No vegetarian option on route" }] },
+    { layer: "Crowd / quiet scoring", count: 610, examples: [
+      { name: "Fushimi Inari", why: "Kept — flagged 'crowded after 10:00 — go late afternoon or climb higher for quiet'" },
+      { name: "Kiyomizu-dera daytime", why: "Down-ranked: very crowded 10:00–17:00" }] },
+    { layer: "Interest match (foliage, design, coffee, food, photo)", count: 180, examples: [{ name: "Kyoto Tower observation", why: "Low interest match" }] },
+    { layer: "Top candidates", count: 50, examples: [] }
+  ],
+  tourVsSelf: [
+    { item: "Nara guided walk", decision: "Not needed", why: "Compact, well-signed park; self-guided fits pace." },
+    { item: "Shojin-ryori temple lunch (Tenryu-ji, Arashiyama)", decision: "Added", why: "Vegetarian food experience; high food + veg fit." },
+    { item: "Tea ceremony (small group)", decision: "Optional", why: "Medium fit; offered as a Plan B for rain." }
+  ],
+
+  // ─── Step ⑦ Assign days (Kyoto) ──────────────────────────────────
+  kyotoPool: [
+    { id: "poi_kennin", name: "Kennin-ji", area: "Higashiyama", why: "Quiet Zen gardens, design" },
+    { id: "poi_kodaiji", name: "Kodai-ji", area: "Higashiyama", why: "Foliage, evening illumination" },
+    { id: "poi_ninenzaka", name: "Ninenzaka lanes", area: "Higashiyama", why: "Photography; go after 17:00" },
+    { id: "poi_tenryuji", name: "Tenryu-ji + Shigetsu shojin lunch", area: "Arashiyama", why: "Vegetarian temple lunch" },
+    { id: "poi_okochi", name: "Okochi Sanso", area: "Arashiyama", why: "Quiet foliage garden" },
+    { id: "poi_gioji", name: "Gio-ji", area: "Arashiyama", why: "Moss + maples, quiet" },
+    { id: "poi_eikando", name: "Eikan-do illumination", area: "Northern Kyoto", why: "Peak foliage evening event" },
+    { id: "poi_philwalk", name: "Philosopher's Path", area: "Northern Kyoto", why: "Walking + foliage" },
+    { id: "poi_nanzenji", name: "Nanzen-ji aqueduct", area: "Northern Kyoto", why: "Architecture + photo" },
+    { id: "poi_dnd", name: "D&Department Kyoto", area: "Central", why: "Design shop" },
+    { id: "poi_weekenders", name: "Weekenders Coffee", area: "Central", why: "Coffee" },
+    { id: "poi_nishiki", name: "Nishiki Market", area: "Central", why: "Food, veg stalls" },
+    { id: "poi_fushimi", name: "Fushimi Inari (upper trail)", area: "Fushimi", why: "Photography golden hour, hiking" },
+    { id: "poi_pontocho", name: "Pontocho evening walk", area: "Central", why: "Lantern-lit lanes, veg-friendly dinners" },
+    { id: "poi_todaiji", name: "Todai-ji", area: "Nara", why: "Architecture" },
+    { id: "poi_naramachi", name: "Naramachi", area: "Nara", why: "Quiet lanes, coffee" },
+    { id: "poi_isuien", name: "Isui-en Garden", area: "Nara", why: "Quiet foliage garden" }
+  ],
+  guardrails: ["All IDs from pool", "No duplicates", "Closures respected", "Capacity respected"],
+
+  // ─── Day cards (Output) ──────────────────────────────────────────
+  days: [
+    { n: 1, date: "2026-11-10", city: "Tokyo", type: "arrival", theme: "Land softly in Omotesando", highlights: ["Arrive HND ~14:30 (est.)", "Omotesando architecture walk", "Vegetarian izakaya dinner"] },
+    { n: 2, date: "2026-11-11", city: "Tokyo", type: "full", theme: "Ginkgo & gardens", highlights: ["Jingu Gaien ginkgo avenue", "Nezu Museum garden", "Aoyama design shops"] },
+    { n: 3, date: "2026-11-12", city: "Tokyo", type: "full", theme: "Old Tokyo, quiet lanes", highlights: ["Yanaka backstreets", "Ueno museums", "Kiyosumi coffee"] },
+    { n: 4, date: "2026-11-13", city: "Tokyo", type: "full", theme: "Design & gardens after dark", highlights: ["Shimokitazawa design/vintage", "Museum of Contemporary Art Tokyo", "Rikugien illumination"] },
+    { n: 5, date: "2026-11-14", city: "Hakone", type: "travel", theme: "Into the mountains", highlights: ["Romancecar to Hakone", "Owakudani ropeway", "Ryokan private onsen + kaiseki"] },
+    { n: 6, date: "2026-11-15", city: "Kanazawa", type: "travel", theme: "Fuji if clear, then the coast", highlights: ["Fuji viewpoint, Lake Ashi (weather-dependent)", "Backup: Hakone Open-Air Museum", "21st Century Museum (late afternoon)"] },
+    { n: 7, date: "2026-11-16", city: "Kanazawa", type: "full", theme: "Gardens & teahouses", highlights: ["Kenroku-en (yukitsuri + maples)", "Higashi Chaya district", "Nagamachi samurai lanes"] },
+    { n: 8, date: "2026-11-17", city: "Takayama", type: "travel", theme: "Over the mountains", highlights: ["Bus to Takayama", "Sanmachi old town", "Miyagawa riverside"] },
+    { n: 9, date: "2026-11-18", city: "Takayama", type: "daytrip", theme: "Shirakawa-go day trip", highlights: ["Ogimachi gassho houses", "Shiroyama viewpoint", "Hida vegetarian set"] },
+    { n: 10, date: "2026-11-19", city: "Kyoto", type: "travel", theme: "Arrive in Kyoto", highlights: ["Hida Ltd Exp to Nagoya → Kyoto", "Nishiki Market", "Pontocho evening walk"] },
+    { n: 11, date: "2026-11-20", city: "Kyoto", type: "full", theme: "Zen, design & golden-hour Fushimi", highlights: ["Kennin-ji", "D&Department Kyoto", "Fushimi Inari at 16:00"] },
+    { n: 12, date: "2026-11-21", city: "Kyoto", type: "daytrip", theme: "Nara day trip", highlights: ["Todai-ji", "Isui-en Garden", "Naramachi coffee"] },
+    { n: 13, date: "2026-11-22", city: "Kyoto", type: "full", theme: "Arashiyama & maple evenings", highlights: ["Tenryu-ji + shojin lunch", "Okochi Sanso", "Eikan-do illumination + kaiseki"] },
+    { n: 14, date: "2026-11-23", city: "Osaka", type: "travel", theme: "Maples, then Osaka flavours", highlights: ["Daitoku-ji sub-temples (quiet)", "Train to Osaka", "Dotonbori veg-friendly food walk"] },
+    { n: 15, date: "2026-11-24", city: "Osaka", type: "departure", theme: "Coffee & fly home", highlights: ["Nakazakicho café", "Nankai to KIX", "Depart KIX"] }
+  ],
+
+  // ─── Step ⑧ Schedule — Day 11 ────────────────────────────────────
+  day11Timeline: [
+    { start: "10:00", end: "10:30", kind: "coffee", label: "Weekenders Coffee", poi: "poi_weekenders" },
+    { start: "10:30", end: "10:45", kind: "transfer", mode: "walk", mins: 15 },
+    { start: "10:45", end: "12:00", kind: "activity", label: "Kennin-ji", poi: "poi_kennin", open: "10:00–16:30", crowd: "low" },
+    { start: "12:00", end: "12:15", kind: "transfer", mode: "walk", mins: 15 },
+    { start: "12:30", end: "13:30", kind: "meal", label: "Vegetarian lunch (veg café, downtown)", veg: true },
+    { start: "13:30", end: "13:50", kind: "transfer", mode: "bus", mins: 20 },
+    { start: "13:50", end: "14:50", kind: "shop", label: "D&Department Kyoto", poi: "poi_dnd", open: "11:00–18:00" },
+    { start: "14:50", end: "15:15", kind: "free", label: "Free time" },
+    { start: "15:15", end: "15:40", kind: "transfer", mode: "train", mins: 25 },
+    { start: "15:40", end: "15:55", kind: "buffer", label: "Buffer" },
+    { start: "16:00", end: "18:00", kind: "activity", label: "Fushimi Inari (upper trail)", poi: "poi_fushimi", open: "24h", crowd: "medium→low" },
+    { start: "18:00", end: "18:30", kind: "transfer", mode: "train", mins: 30 },
+    { start: "19:00", end: "20:30", kind: "meal", label: "Vegetarian-friendly dinner, Pontocho", veg: true },
+    { start: "20:30", end: "20:45", kind: "transfer", mode: "walk", mins: 15, label: "Return to hotel" }
+  ],
+  penalty: {
+    item: "Fushimi Inari",
+    weights: { lateStart: 0.8, crowd: 0.5, photo: 0.5 },
+    options: [
+      { time: "10:30", lateStart: 0, crowd: 0.9, photoBonus: 0.1, score: -0.40 },
+      { time: "16:00", lateStart: 0, crowd: 0.4, photoBonus: 0.8, score: 0.20 }
+    ],
+    formula: "score = photo_w·photo_bonus − crowd_w·crowd − late_w·late_start",
+    winner: "16:00"
+  },
+  day11Travel: { naiveMin: 118, optimisedMin: 85 },
+
+  // ─── Step ⑨ Validate & Repair ────────────────────────────────────
+  hardChecks: ["Open at scheduled time", "No overlaps", "Within day window", "Transit limits", "No duplicates", "Vegetarian meals present", "Ryokan night on Hakone leg", "Return By"],
+  softMeters: [
+    { name: "Pace per day", value: 0.72 }, { name: "Budget", value: 0.81 },
+    { name: "Interest mix", value: 0.88 }, { name: "Crowd exposure", value: 0.34 }
+  ],
+  validationFailures: [
+    { day: 7, rule: "Open at scheduled time", before: "Day 7 (Mon): 21st Century Museum of Contemporary Art placed on its closed day (Mondays)", after: "Moved to Day 6 afternoon (Sun, open until 18:00)" },
+    { day: 3, rule: "Vegetarian meals present", before: "Day 3: dinner venue without vegetarian options", after: "Swapped for a vegetarian-friendly izakaya 6 min away" }
+  ],
+  feedbackLoop: ["Day can't fit", "Move item", "City needs a night", "Re-allocate nights", "Ask the user"],
+
+  // ─── Step ⑩ Narrate ──────────────────────────────────────────────
+  narration: {
+    factSheet: { poi: "poi_fushimi", walk_from_station_min: 35, start: "16:00", sunset: "16:45", crowd_after_16: "medium→low" },
+    generated: "Start {{poi:poi_fushimi}} at 16:00 and climb for about 35 minutes; the crowds thin as you go higher and sunset lands around 16:45.",
+    rejected: { text: "…a 20-minute walk to the upper shrines…", reason: "Fact sheet says 35 min", action: "Rejected → template fallback" },
+    tripSummary: "Fifteen days from Tokyo's design streets to Kyoto's maple evenings — one splurge night in a Hakone ryokan, longer stays elsewhere, and nothing before 10.",
+    dayIntro11: "A slow Zen morning, design browsing after lunch, and Fushimi Inari at golden hour when the crowds thin."
+  },
+
+  // ─── Anatomy of a day (full detail: 1, 6, 11) ────────────────────
+  anatomy: {
+    1: { window: "14:30–21:00", capacity: 0.35, energy: "low (arrival)", fixed: ["Flight lands HND ~14:30 (est.)"], closures: [],
+         planB: ["Flight delay > 2h → skip walk, dinner near hotel"], checks: "all pass" },
+    6: { window: "10:00–21:00", capacity: 0.6, energy: "medium", fixed: ["Train Hakone → Kanazawa ~4h45 (est.)"], closures: ["21st Century Museum open Sun"],
+         planB: ["Cloudy → Hakone Open-Air Museum instead of Fuji viewpoint"], checks: "repair: museum moved in from Day 7" },
+    11: { window: "10:00–21:00", capacity: 0.85, energy: "high", fixed: ["Sunset ~16:45"], closures: [],
+         planB: ["Rain → swap Fushimi for tea ceremony + Nishiki covered market"], checks: "all pass" }
+  },
+
+  // ─── Signature interactions ──────────────────────────────────────
+  breakIt: {
+    bad: [
+      { error: "Invented temple 'Kinmomiji-dera'", caughtBy: "ID not in pool", fix: "Removed; slot filled by Kodai-ji" },
+      { error: "Tokyo place (Nezu Museum) in a Kyoto day", caughtBy: "Area/city mismatch", fix: "Replaced by Kennin-ji" },
+      { error: "Duplicate: Kennin-ji on Day 11 and Day 13", caughtBy: "No duplicates", fix: "Day 13 copy → Gio-ji" },
+      { error: "Museum on its closed day", caughtBy: "Open at scheduled time", fix: "Moved to open day" },
+      { error: "Day with 6 major items", caughtBy: "Capacity (Activities per Day = 4)", fix: "2 lowest-score items moved to Day 13" },
+      { error: "Narration: '10-minute walk' (fact: 35)", caughtBy: "Grounding check", fix: "Template fallback" },
+      { error: "Narration mentions invented café", caughtBy: "Entity not tokenised / not in fact sheet", fix: "Sentence dropped" }
+    ]
+  },
+  naiveVsPipeline: {
+    label: "Simulated example",
+    naiveViolations: [
+      "Day 7: museum on Monday (closed)",
+      "Day 3: non-vegetarian dinner",
+      "Hakone + Kawaguchiko both included (duplicate Fuji stops)",
+      "Day 2: 08:30 start (before 10:00)",
+      "5 hotel changes in first 6 days",
+      "Travel time Takayama→Kyoto stated as 2h (actual ~3h45)",
+      "Invented café in Naramachi"
+    ],
+    pipelineViolations: []
+  },
+  changePreference: {
+    remove: "c_daystart",
+    reRun: [2, 8, 9, 10], untouched: [3, 4, 5],
+    dialChange: { dial: "dayStart", from: "10:00", to: "09:00" },
+    day11After: "Kennin-ji moves to 09:15; Fushimi Inari stays 16:00 (golden-hour bonus still wins)."
+  },
+
+  // ─── Edit loop ───────────────────────────────────────────────────
+  constraintStageMap: [
+    { change: "Move item between days", stages: [8, 9, 10] },
+    { change: "Day-scoped pace/load", stages: [2, 7, 8, 9, 10] },
+    { change: "Swap one item", stages: [6, 8, 9, 10] },
+    { change: "Add/remove city or days", stages: [3, 4, 5, 6, 7, 8, 9, 10] },
+    { change: "Stay change", stages: [5, 8, 9, 10] },
+    { change: "Question", stages: [] }
+  ],
+  editRequests: [
+    { id: 1, source: "ui", text: "Drag: move Nara day trip from Day 12 to Day 13", intent: "direct_edit", ai: false, confidence: null,
+      op: { op: "move_day_block", block: "nara_daytrip", from: 12, to: 13 }, affectedDays: [12, 13], reRun: [8, 9, 10], timing: "40 ms, 0 AI calls",
+      diff: { added: 0, removed: 0, moved: 2, retimed: 4, unchanged: 13 }, explain: "Nara now on Day 13 (Sun); Arashiyama moved to Day 12." },
+    { id: 2, source: "chat", text: "Day 11 feels too packed, make it relaxed", intent: "scoped_constraint", ai: true, confidence: 0.93,
+      op: { op: "apply_preset", preset: "Relaxed", days: [11] }, affectedDays: [11], reRun: [2, 7, 8, 9, 10], timing: "180 ms, 1 AI call",
+      scopedDial: { dial: "activitiesPerDay", from: 4, to: 3, days: [11] },
+      diff: { added: 0, removed: 2, moved: 1, retimed: 3, unchanged: 14 }, explain: "Day 11 now has 3 stops; D&Department moved to Day 13, free time doubled." },
+    { id: 3, source: "chat", text: "Swap the Kyoto kaiseki dinner for something more casual", intent: "swap", ai: true, confidence: 0.9,
+      op: { op: "swap", target: "kaiseki_d13", criteria: ["casual", "vegetarian_friendly"] }, affectedDays: [13], reRun: [8, 9, 10], timing: "60 ms, 1 AI call (classify only)",
+      diff: { added: 1, removed: 1, moved: 0, retimed: 1, unchanged: 14 }, explain: "Kaiseki replaced by a casual vegetarian-friendly udon spot near Eikan-do (next best in pool)." },
+    { id: 4, source: "chat", text: "Can we add Hiroshima? We'll add 2 days.", intent: "structural", ai: true, confidence: 0.88,
+      op: { op: "add_city", city: "Hiroshima", addDays: 2, position: "before_exit" }, affectedDays: [14, 15, 16, 17], reRun: [3, 4, 5, 6, 7, 8, 9, 10], timing: "1.9 s, 3 AI calls",
+      locks: ["Hakone ryokan night", "One Kyoto day (viewer-locked)"],
+      newLegs: [
+        { city: "Tokyo", nights: 4 }, { city: "Hakone", nights: 1 }, { city: "Kanazawa", nights: 2 }, { city: "Takayama", nights: 2 },
+        { city: "Kyoto", nights: 4 }, { city: "Hiroshima", nights: 2, note: "incl. Miyajima" }, { city: "Osaka", nights: 1 }],
+      diff: { added: 8, removed: 2, moved: 1, retimed: 3, unchanged: 13 }, explain: "17 days: Hiroshima 2N (Peace Park, Miyajima) before the Osaka exit; locked items kept." },
+    { id: 5, source: "chat", text: "Put the ryokan night in Kyoto instead", intent: "conflict", ai: true, confidence: 0.86,
+      op: { op: "move_stay", stay: "ryokan", to: "Kyoto" }, affectedDays: [5, 6], reRun: [4, 5, 9], timing: "120 ms, 1 AI call",
+      conflict: "No ryokan with private onsen within budget in the Kyoto pool; the Hakone night also serves the Fuji preference.",
+      options: [
+        { label: "Keep Hakone", recommended: true, cost: "—" },
+        { label: "Kyoto machiya with private bath (no onsen)", cost: "+¥18,000 (est.)" },
+        { label: "Kurama onsen day trip from Kyoto (public bath)", cost: "+¥3,000 (est.)" }],
+      diff: { added: 0, removed: 0, moved: 0, retimed: 0, unchanged: 15 }, explain: "Depends on option chosen." },
+    { id: 6, source: "chat", text: "How long is the train from Kanazawa to Takayama?", intent: "question", ai: true, confidence: 0.97,
+      op: { op: "answer", from: "kanazawa", to: "takayama" }, affectedDays: [], reRun: [], timing: "20 ms, 1 AI call",
+      answer: "No direct train — the highway bus takes ~2h15 (est.); by rail via Toyama it is ~2h45 (est.).", noPlanChange: true,
+      diff: { added: 0, removed: 0, moved: 0, retimed: 0, unchanged: 15 }, explain: "No plan change." }
+  ],
+
+
+  // ─── Pipeline steps (meta) ───────────────────────────────────────
+  steps: [
+    { n: 1, id: "understand", name: "Understand", role: "ai", assist: null, timing: "~1.4 s", aiCalls: 1, decisions: 8,
+      headline: "AI turns the chat message into typed constraints from a closed list; code validates every field.",
+      inputs: ["Chat message", "Form: interests, pace, budget, dates"], process: ["LLM extracts constraints (closed type list)", "Code validates schema, types and weights", "Unknown preferences deferred until a tie needs them"], outputs: ["8 constraints", "1 deferred question"],
+      reads: [], writes: ["constraints"] },
+    { n: 2, id: "dials", name: "Trip Dials", role: "code", assist: null, timing: "3 ms", aiCalls: 0, decisions: 18,
+      headline: "Code folds presets and constraints into ~15 Trip Dials; strictest or most explicit wins.",
+      inputs: ["Constraints", "Dial Presets", "Defaults"], process: ["Apply defaults", "Apply presets", "Apply constraints (strictest/explicit wins)"], outputs: ["18 dial positions with history"],
+      reads: ["constraints"], writes: ["trip_dials"] },
+    { n: 3, id: "route", name: "Gateways & Route", role: "code", assist: "user", timing: "42 ms", aiCalls: 0, decisions: 31,
+      headline: "Code picks gateways, classifies cities and scores route orderings; a close tie is handed to the traveller.",
+      inputs: ["Trip Dials", "City catalogue", "Travel-time matrix", "Fares (est.)"], process: ["Compare gateway pairs", "Classify cities: base / day trip / rejected", "Score ~6 orderings", "Tie within 4% → ask one question"], outputs: ["Open-jaw HND → KIX", "Route of 6 bases"],
+      reads: ["trip_dials", "cities", "transport_edges", "travel_time_matrix"], writes: [] },
+    { n: 4, id: "nights", name: "Nights", role: "code", assist: "ai", timing: "6 ms + ~0.8 s", aiCalls: 1, decisions: 12,
+      headline: "Code allocates 14 nights from POI demand; AI may nudge ±1 and code re-checks.",
+      inputs: ["Route", "POI hours per city", "Min Nights per Base"], process: ["Demand days = matched POI hours ÷ usable hours/day", "Apply mins, caps, half-days, travel loss", "AI nudge ±1 → code re-check"], outputs: ["Nights per base with dates"],
+      reads: ["pois", "trip_dials"], writes: ["itinerary_versions"] },
+    { n: 5, id: "stay", name: "Stay", role: "code", assist: "ai", timing: "9 ms + ~1.1 s", aiCalls: 1, decisions: 14,
+      headline: "Code shortlists 2–3 hotel areas per city; AI picks one with a one-line reason.",
+      inputs: ["Bases", "Likely POIs", "Budget dial"], process: ["Score areas: travel time, walkability, price, vibe", "AI picks from shortlist", "Code checks the pick is on the shortlist"], outputs: ["Area + price band + 2 example properties per city"],
+      reads: ["areas", "hotels", "travel_time_matrix"], writes: ["itinerary_versions"] },
+    { n: 6, id: "candidates", name: "Candidates", role: "code", assist: null, timing: "28 ms", aiCalls: 0, decisions: 7,
+      headline: "Code filters the catalogue to ~50 fitting candidates per city — the only pool AI may pick from.",
+      inputs: ["Catalogue", "Dates", "Trip Dials"], process: ["Open on dates", "Fits day window", "Vegetarian meals nearby", "Crowd/quiet scoring", "Interest match"], outputs: ["Top ~50 candidates for Kyoto"],
+      reads: ["pois", "restaurants", "events", "trip_dials"], writes: [] },
+    { n: 7, id: "assign", name: "Assign days", role: "ai", assist: "code", timing: "~1.8 s", aiCalls: 6, decisions: 22,
+      headline: "AI chooses and groups activities into days from the pool; code checks every ID.",
+      inputs: ["Candidate pool", "Day frames"], process: ["AI groups by area and theme", "Code: IDs in pool, no duplicates, closures, capacity"], outputs: ["Themed days with picks"],
+      reads: ["pois", "events"], writes: ["itinerary_versions"] },
+    { n: 8, id: "schedule", name: "Schedule", role: "code", assist: null, timing: "65 ms", aiCalls: 0, decisions: 48,
+      headline: "Code orders and times every stop around opening hours, crowds, meals and transfers.",
+      inputs: ["Day picks", "Opening hours", "Crowd curves", "Travel-time matrix"], process: ["Order stops (min travel)", "Place by penalty score", "Insert meals, coffee, buffers, free time"], outputs: ["Timed day plans"],
+      reads: ["pois", "restaurants", "travel_time_matrix"], writes: ["itinerary_versions"] },
+    { n: 9, id: "validate", name: "Validate & Repair", role: "code", assist: null, timing: "18 ms", aiCalls: 0, decisions: 26,
+      headline: "Code runs every hard check and soft meter; failures are repaired or escalated.",
+      inputs: ["Timed plan", "Trip Dials", "Constraints"], process: ["Hard checks", "Soft meters", "Repair loop: move → re-allocate → ask"], outputs: ["Validated plan v1", "Repair log"],
+      reads: ["pois", "restaurants", "trip_dials", "constraints"], writes: ["itinerary_versions"] },
+    { n: 10, id: "narrate", name: "Narrate", role: "ai", assist: "code", timing: "~1.6 s", aiCalls: 2, decisions: 17,
+      headline: "AI writes narration from a fact sheet; code checks every number and entity against it.",
+      inputs: ["Fact sheet per day"], process: ["AI writes text with {{poi:ID}} tokens", "Code renders tokens to names", "Grounding check; fallback to template"], outputs: ["Trip summary", "Day intros and item notes"],
+      reads: ["itinerary_versions"], writes: ["itinerary_versions"] }
+  ],
+
+  // Numeric dial ranges for the slider view (time in minutes after midnight)
+  dialRanges: {
+    dayStart: [360, 720], dayEnd: [1080, 1440], returnBy: [1200, 1440], activitiesPerDay: [1, 7], freeTime: [0, 180], buffer: [0, 40],
+    walkingLimit: [2, 24], maxContinuousWalk: [5, 60], transitPerDay: [0, 6], taxiThreshold: [5, 45], minNights: [1, 4], maxHotelChanges: [1, 10]
+  },
+
+  // ─── Step ⑦ Kyoto day frames & assignment ────────────────────────
+  kyotoFrames: [
+    { day: 10, type: "travel", capacity: 2, energy: "low — after 3h45 travel", fixed: [], closures: [], theme: "Arrive in Kyoto", picks: ["poi_nishiki", "poi_pontocho"] },
+    { day: 11, type: "full", capacity: 4, energy: "high", fixed: ["Sunset ~16:45"], closures: [], theme: "Zen, design & golden-hour Fushimi", picks: ["poi_weekenders", "poi_kennin", "poi_dnd", "poi_fushimi"] },
+    { day: 12, type: "daytrip", capacity: 3, energy: "medium", fixed: ["Kintetsu to Nara ~45 min"], closures: ["Isui-en closed Tue (est.) — Sat OK"], theme: "Nara day trip", picks: ["poi_todaiji", "poi_isuien", "poi_naramachi"] },
+    { day: 13, type: "full", capacity: 4, energy: "medium", fixed: ["Eikan-do illumination 17:30–20:30 (est.)"], closures: [], theme: "Arashiyama & maple evenings", picks: ["poi_tenryuji", "poi_okochi", "poi_gioji", "poi_eikando"] }
+  ],
+
+  // ─── Step ⑧ extras ───────────────────────────────────────────────
+  crowdCurves: { // hourly 10:00 … 21:00, 0–1 (est.)
+    poi_kennin: [0.3, 0.35, 0.4, 0.4, 0.35, 0.3, 0.2, 0, 0, 0, 0, 0],
+    poi_dnd: [0.2, 0.3, 0.4, 0.45, 0.45, 0.4, 0.35, 0.3, 0, 0, 0, 0],
+    poi_fushimi: [0.75, 0.85, 0.9, 0.95, 0.95, 0.85, 0.6, 0.45, 0.35, 0.3, 0.25, 0.2],
+    poi_weekenders: [0.5, 0.6, 0.5, 0.4, 0.4, 0.35, 0.3, 0.2, 0, 0, 0, 0]
+  },
+  day11Orders: {
+    naive: { stops: ["Fushimi Inari (10:30)", "Kennin-ji", "Weekenders Coffee", "D&Department Kyoto"], legs: [35, 30, 25, 28], mins: 118 },
+    optimised: { stops: ["Weekenders Coffee", "Kennin-ji", "D&Department Kyoto", "Fushimi Inari (16:00)"], legs: [15, 20, 25, 25], mins: 85 }
+  },
+
+  // ─── Step ⑨ extras ───────────────────────────────────────────────
+  hardCheckResults: [
+    { rule: "Open at scheduled time", checked: 58, failedBefore: 1, detail: "Opening hours + weekly closures for each timed stop" },
+    { rule: "No overlaps", checked: 112, failedBefore: 0, detail: "Each block ends before the next starts, incl. transfers" },
+    { rule: "Within day window", checked: 15, failedBefore: 0, detail: "Every day between Day Start and Day End dials" },
+    { rule: "Transit limits", checked: 15, failedBefore: 0, detail: "Transit per Day ≤ 2 h except travel days" },
+    { rule: "No duplicates", checked: 58, failedBefore: 0, detail: "Each POI ID appears at most once" },
+    { rule: "Vegetarian meals present", checked: 28, failedBefore: 1, detail: "Every lunch/dinner has a vegetarian-friendly venue" },
+    { rule: "Ryokan night on Hakone leg", checked: 1, failedBefore: 0, detail: "Hard stay requirement placed on the right night" },
+    { rule: "Return By", checked: 15, failedBefore: 0, detail: "Back at hotel before 22:00" }
+  ],
+
+  // ─── Step ⑩ extras ───────────────────────────────────────────────
+  groundingChecks: [
+    { claim: "{{poi:poi_fushimi}}", kind: "entity", fact: "poi: poi_fushimi", ok: true },
+    { claim: "16:00", kind: "time", fact: "start: 16:00", ok: true },
+    { claim: "35 minutes", kind: "number", fact: "walk_from_station_min: 35", ok: true },
+    { claim: "16:45", kind: "time", fact: "sunset: 16:45", ok: true },
+    { claim: "crowds thin", kind: "claim", fact: "crowd_after_16: medium→low", ok: true }
+  ],
+
+  // ─── Data tables: schema + sample rows ───────────────────────────
+  tableDefs: {
+    constraints: { desc: "Structured constraints from chat + form.", sources: ["user"], derived: "constraints" },
+    trip_dials: { desc: "Dial positions with history.", sources: ["internal"], derived: "dials" },
+    cities: { desc: "Cities with role and coordinates.", sources: ["knowledge", "editorial"], derived: "cities" },
+    transport_edges: { desc: "City-to-city door-to-door times and modes.", sources: ["rail"], derived: "edges" },
+    travel_time_matrix: { desc: "POI-to-POI travel minutes by mode.", sources: ["rail", "places"],
+      cols: ["from", "to", "walk", "transit", "taxi"], rows: [["poi_weekenders", "poi_kennin", 15, 12, 8], ["poi_kennin", "poi_dnd", 25, 20, 10], ["poi_dnd", "poi_fushimi", 70, 25, 20], ["poi_fushimi", "poi_pontocho", 75, 30, 22]] },
+    areas: { desc: "Neighbourhoods scored for stays.", sources: ["editorial", "places"],
+      cols: ["area_id", "city", "walkability", "price_band", "vibe"], rows: [["kyo_downtown", "Kyoto", 9, "¥¥", "coffee, design"], ["kyo_higashiyama", "Kyoto", 8, "¥¥¥", "atmospheric"], ["kyo_station", "Kyoto", 6, "¥¥", "hub"], ["tok_shibuya", "Tokyo", 9, "¥¥", "design"]] },
+    hotels: { desc: "Hotels and ryokan (planning only, no booking).", sources: ["hotels"],
+      cols: ["hotel_id", "area", "type", "price_band", "private_onsen"], rows: [["htl_ryokan_a", "Gora", "ryokan", "¥¥¥¥", true], ["htl_g", "kyo_downtown", "hotel", "¥¥", false], ["htl_c", "Korinbo", "hotel", "¥¥", false]] },
+    pois: { desc: "Places with planning metadata.", sources: ["places", "knowledge", "editorial"],
+      cols: ["poi_id", "name", "duration", "hours", "weekly_off", "crowd_peak"], rows: [["poi_fushimi", "Fushimi Inari", "90–150", "24h", "—", "10–15"], ["poi_kennin", "Kennin-ji", "60–90", "10:00–16:30", "—", "12–13"], ["poi_21cmoca", "21st Century Museum", "90–120", "10:00–18:00", "Mon", "13–15"], ["poi_kenrokuen", "Kenroku-en", "60–120", "08:00–17:00", "—", "10–13"]] },
+    restaurants: { desc: "Restaurants with dietary fit.", sources: ["places", "editorial"],
+      cols: ["rest_id", "city", "veg_friendly", "meals", "price_band"], rows: [["rst_shigetsu", "Kyoto", "full", "lunch", "¥¥¥"], ["rst_pontocho_v", "Kyoto", "good", "dinner", "¥¥"], ["rst_d3_old", "Tokyo", "none", "dinner", "¥¥"], ["rst_d3_new", "Tokyo", "good", "dinner", "¥¥"]] },
+    events: { desc: "Seasonal events: foliage, illuminations.", sources: ["events"],
+      cols: ["event_id", "place", "window", "hours", "confidence"], rows: [["evt_eikando", "Eikan-do", "Nov 7 – Dec 6 (est.)", "17:30–20:30", "medium"], ["evt_rikugien", "Rikugien", "Nov 20 – Dec 4 (est.)", "until 21:00", "medium"], ["evt_kyoto_foliage", "Kyoto", "peak Nov 15–30 (est.)", "—", "medium"]] },
+    itinerary_versions: { desc: "Every plan version and its diff.", sources: ["internal"],
+      cols: ["version", "created_by", "changed_days", "summary"], rows: [["v1", "pipeline", "1–15", "Initial validated plan"], ["v2", "edit", "—", "Created by Edit loop"]] }
+  },
+  sourceNames: { user: "User input", internal: "Internal data", knowledge: "Knowledge sources", editorial: "Editorial", rail: "Rail & routing", places: "Places / POIs", hotels: "Hotels & ryokan", events: "Events & seasonal" },
+
+  // ─── Data tables (Pipeline data strip) ───────────────────────────
+  tables: ["constraints", "trip_dials", "cities", "transport_edges", "travel_time_matrix", "areas", "hotels", "pois", "restaurants", "events", "itinerary_versions"]
+};
+
+
+</script>
+<script>
+/* Inside the Planner — app. Every visual is derived from SCENARIO. */
+(function () {
+  "use strict";
+  const S = SCENARIO;
+
+  // ─── Helpers ──────────────────────────────────────────────────────
+  const $ = (sel, root = document) => root.querySelector(sel);
+  const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+  const esc = v => String(v == null ? "" : v).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const toMin = t => { const [h, m] = t.split(":").map(Number); return h * 60 + m; };
+  const fmtMin = m => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+  const fmtDur = m => m >= 60 ? `${Math.floor(m / 60)}h${m % 60 ? String(m % 60).padStart(2, "0") : ""}` : `${m} min`;
+  const dateOf = iso => new Date(iso + "T00:00:00Z");
+  const wd = iso => dateOf(iso).toLocaleDateString("en-GB", { weekday: "short", timeZone: "UTC" });
+  const dm = iso => dateOf(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
+  const byId = (arr, id) => arr.find(x => x.id === id);
+  const poi = id => byId(S.kyotoPool, id);
+  const allDials = () => S.dialGroups.flatMap(g => g.dials.map(d => Object.assign({ group: g }, d)));
+  const store = {
+    get(k) { try { return localStorage.getItem("itp:" + k); } catch (e) { return null; } },
+    set(k, v) { try { localStorage.setItem("itp:" + k, v); } catch (e) { /* ignore */ } }
+  };
+  const fmtVal = v => v == null ? "—" : typeof v === "object" ? Object.entries(v).map(([k, x]) => `${k} ${x}`).join(", ") : String(v);
+
+  const ROLE_LABEL = { ai: "AI", code: "Code", user: "User" };
+  function roleBadges(step) {
+    const main = `<span class="badge b-${step.role}">${ROLE_LABEL[step.role]}</span>`;
+    const assist = {
+      user: `<span class="badge b-user">tie → User</span>`,
+      ai: step.role === "code" ? `<span class="badge b-ai">${step.n === 4 ? "AI may nudge ±1" : "AI picks"}</span>` : "",
+      code: `<span class="badge b-code">code-checked</span>`
+    }[step.assist] || "";
+    return main + assist;
+  }
+  const timingBadge = step => `<span class="badge b-time" title="Typical run time">⏱ ${esc(step.timing)}</span>`;
+
+  // ─── State ────────────────────────────────────────────────────────
+  const TABS = [
+    { id: "pipeline", name: "Pipeline" }, { id: "edit", name: "Edit loop" }, { id: "data", name: "Data" },
+    { id: "arch", name: "Architecture" }, { id: "future", name: "Future" }
+  ];
+  const OUTPUT = S.steps.length; // rail index of the Output panel
+  const state = {
+    tab: TABS.some(t => t.id === store.get("tab")) ? store.get("tab") : "pipeline",
+    step: Math.min(Math.max(parseInt(store.get("step") || "0", 10) || 0, 0), OUTPUT),
+    playing: false, timer: null,
+    ui: { dialView: "sliders", day11Order: "optimised", narrView: "rendered" }
+  };
+
+  // ─── Header ───────────────────────────────────────────────────────
+  function counters() {
+    return {
+      ai: S.steps.reduce((a, s) => a + s.aiCalls, 0),
+      code: S.steps.reduce((a, s) => a + s.decisions, 0),
+      tables: S.tables.length
+    };
+  }
+  function renderHeader() {
+    const c = counters();
+    const leg0 = S.legs[0], legN = S.legs[S.legs.length - 1];
+    $("#header").innerHTML = `
+      <div class="top-row">
+        <div>
+          <h1>${esc(S.meta.title)}</h1>
+          <p class="pitch">${esc(S.meta.pitch)}</p>
+          <p class="core"><span class="sw">Software makes it possible,</span><span class="ai">AI makes it personal.</span></p>
+        </div>
+        <div class="top-meta">
+          <span class="counter"><b>${c.ai}</b> AI calls · <b>${c.code}</b> code decisions · <b>${c.tables}</b> data tables</span>
+          <button class="theme-btn" id="themeBtn" aria-label="Toggle colour theme">◐ Theme: <span id="themeName">auto</span></button>
+        </div>
+      </div>
+      <details class="scenario">
+        <summary>Scenario — ${esc(S.travellers.party)} from ${esc(S.travellers.from)}, ${S.trip.days} days in Japan (${wd(S.trip.startDate)} ${dm(S.trip.startDate)} – ${wd(S.trip.endDate)} ${dm(S.trip.endDate)} ${S.trip.startDate.slice(0, 4)})</summary>
+        <div class="scenario-body">
+          <div class="kv"><b>Travellers</b>${esc(S.travellers.party)}, ${esc(S.travellers.from)}${S.travellers.firstTimeInJapan ? ", first time in Japan" : ""}</div>
+          <div class="kv"><b>Dates</b>${S.trip.days} days / ${S.trip.nights} nights · ${esc(S.trip.season)}</div>
+          <div class="kv"><b>Budget</b>${esc(S.trip.budget.band)} + ${esc(S.trip.budget.splurge)}</div>
+          <div class="kv"><b>Form</b>${S.form.interests.map(esc).join(", ")} · pace ${esc(S.form.pace)}</div>
+          <div class="kv"><b>Gateways</b>In ${esc(leg0.city)} (HND) · out ${esc(legN.city)} (KIX)</div>
+          <div class="kv"><b>Route</b>${S.legs.map(l => `${esc(l.city)} ${l.nights}N`).join(" → ")}</div>
+          <div class="kv quote"><b>Chat message</b>“${esc(S.chatMessage)}”</div>
+          <div class="kv quote"><b>Flow</b>${esc(S.meta.flowLine)}</div>
+        </div>
+      </details>
+      <div class="legend" aria-label="Colour legend">
+        <span><i class="dot d-user"></i>User</span><span><i class="dot d-ai"></i>AI</span><span><i class="dot d-code"></i>Code</span>
+        <span><i class="dot d-data"></i>Data</span><span><i class="dot d-ext"></i>External</span><span><i class="dot d-bad"></i>Violation</span>
+        <span><span class="ok">✔</span>Pass / repaired</span>
+      </div>`;
+    $("#illus").textContent = S.meta.dataLabel;
+  }
+
+  const THEMES = ["auto", "light", "dark"];
+  function applyTheme(t) {
+    if (t === "auto") document.documentElement.removeAttribute("data-theme"); else document.documentElement.setAttribute("data-theme", t);
+    const n = $("#themeName"); if (n) n.textContent = t;
+  }
+
+  // ─── Tabs ─────────────────────────────────────────────────────────
+  function renderTabs() {
+    $("#tabs").innerHTML = TABS.map(t =>
+      `<button role="tab" id="tab-${t.id}" aria-controls="panel" aria-selected="${t.id === state.tab}" data-tab="${t.id}">${esc(t.name)}</button>`).join("");
+  }
+  function setTab(id) {
+    stopPlay();
+    state.tab = id; store.set("tab", id);
+    renderTabs(); renderMain();
+  }
+  function renderMain() {
+    const panel = $("#panel");
+    panel.setAttribute("aria-labelledby", "tab-" + state.tab);
+    if (state.tab === "pipeline") return renderPipeline();
+    const stage = { edit: 4, data: 5, arch: 5, future: 5 }[state.tab];
+    panel.innerHTML = `<div class="ph">This tab is built in Stage ${stage}.</div>`;
+  }
+
+  // ─── Pipeline shell ───────────────────────────────────────────────
+  function renderPipeline() {
+    $("#panel").innerHTML = `
+      <div class="rail-wrap" id="railWrap">
+        <div class="rail" role="list" aria-label="Pipeline steps">
+          ${S.steps.map((s, i) => railBtn(s, i)).join("")}
+          <button role="listitem" data-go="${OUTPUT}" data-role="out" ${state.step === OUTPUT ? 'aria-current="step"' : ""}>
+            <span class="num">OUT</span><span class="nm">Output</span><span class="rl"></span></button>
+        </div>
+        <div class="controls">
+          <button class="btn" id="prevBtn" aria-label="Previous step">← Prev</button>
+          <button class="btn primary" id="playBtn" aria-label="Play">▶ Play</button>
+          <button class="btn" id="nextBtn" aria-label="Next step">Next →</button>
+          <span class="faint xs grow">Keys: ← → to step · space to play</span>
+        </div>
+        <div class="flowline"></div>
+      </div>
+      <div id="stepView" aria-live="polite"></div>`;
+    renderStep();
+  }
+  function railBtn(s, i) {
+    const cls = [i < state.step ? "done" : "", s.assist === "ai" || s.assist === "user" ? "mix" : "", s.assist === "code" ? "mix-ai" : ""].join(" ");
+    return `<button role="listitem" class="${cls}" data-go="${i}" data-role="${s.role}" ${i === state.step ? 'aria-current="step"' : ""} title="${esc(s.name)}">
+      <span class="num">${s.n}</span><span class="nm">${esc(s.name)}</span><span class="rl"></span><span class="tdot"></span></button>`;
+  }
+  function updateRail() {
+    $$(".rail button").forEach((b, i) => {
+      if (i === state.step) b.setAttribute("aria-current", "step"); else b.removeAttribute("aria-current");
+      b.classList.toggle("done", i < state.step);
+    });
+    const pb = $("#prevBtn"), nb = $("#nextBtn");
+    if (pb) pb.disabled = state.step === 0;
+    if (nb) nb.disabled = state.step === OUTPUT;
+    const play = $("#playBtn");
+    if (play) { play.textContent = state.playing ? "❚❚ Pause" : "▶ Play"; play.setAttribute("aria-label", state.playing ? "Pause" : "Play"); }
+    const rw = $("#railWrap"); if (rw) rw.classList.toggle("playing", state.playing);
+  }
+  function goStep(i) {
+    state.step = Math.min(Math.max(i, 0), OUTPUT);
+    store.set("step", String(state.step));
+    if (state.tab !== "pipeline") { state.tab = "pipeline"; store.set("tab", "pipeline"); renderTabs(); renderPipeline(); }
+    else renderStep();
+  }
+  function renderStep() {
+    updateRail();
+    const view = $("#stepView");
+    if (state.step === OUTPUT) { view.innerHTML = renderOutput(); return; }
+    const s = S.steps[state.step];
+    view.innerHTML = `<section class="step" data-step="${s.n}" data-role="${s.role}">
+      ${stepHeader(s)}
+      <div class="visual">${STEP_RENDER[s.id](s)}</div>
+    </section>`;
+  }
+  function stepHeader(s) {
+    const tiles = S.tables.map(t => {
+      const r = s.reads.includes(t), w = s.writes.includes(t);
+      return `<button class="dtile ${r || w ? "lit" : ""} ${w ? "w" : ""}" data-insp="table:${t}" title="${r ? "read" : ""}${r && w ? " + " : ""}${w ? "written" : ""}">${t}</button>`;
+    }).join("");
+    return `<div class="step-head">
+        <div><div class="ttl"><span class="big">STEP ${s.n}</span><h2>${esc(s.name)}</h2></div>
+        <p class="headline">${esc(s.headline)}</p></div>
+        <div class="row">${roleBadges(s)}${timingBadge(s)}</div>
+      </div>
+      <div class="ipo">
+        <div class="col"><h4>Inputs</h4><ul>${s.inputs.map(x => `<li>${esc(x)}</li>`).join("")}</ul></div>
+        <div class="arr" aria-hidden="true">→</div>
+        <div class="col proc ${s.role === "ai" ? "ai" : ""}"><h4>Process</h4><ul>${s.process.map(x => `<li>${esc(x)}</li>`).join("")}</ul></div>
+        <div class="arr" aria-hidden="true">→</div>
+        <div class="col"><h4>Outputs</h4><ul>${s.outputs.map(x => `<li>${esc(x)}</li>`).join("")}</ul></div>
+      </div>
+      <div class="datastrip"><span class="faint">Data tables:</span>${tiles}<span class="faint xs">(solid = read, underline = written)</span></div>`;
+  }
+
+  // ─── Play / keyboard ──────────────────────────────────────────────
+  function startPlay() {
+    if (state.step === OUTPUT) goStep(0);
+    state.playing = true; updateRail();
+    state.timer = setInterval(() => {
+      if (state.step >= OUTPUT) return stopPlay();
+      goStep(state.step + 1);
+    }, 4500);
+  }
+  function stopPlay() { state.playing = false; clearInterval(state.timer); state.timer = null; updateRail(); }
+
+  // ═══ STEP RENDERERS ═══════════════════════════════════════════════
+  const STEP_RENDER = {};
+
+  // ① Understand
+  STEP_RENDER.understand = () => {
+    let chat = esc(S.chatMessage);
+    S.constraints.forEach(c => {
+      const p = esc(c.phrase);
+      chat = chat.replace(p, `<button class="phr" data-insp="constraint:${c.id}" data-hl="${c.id}" title="→ ${esc(c.chip)}">${p}</button>`);
+    });
+    const q = S.clarifyingQuestion;
+    return `<div class="stack">
+      <div class="spread"><h3>Chat message</h3><button class="link small" data-insp="rules:understand">Constraint rules &amp; weights</button></div>
+      <div class="chat">${chat}</div>
+      <p class="faint xs">Click a highlighted phrase to see the constraint it produced.</p>
+      <h3>Constraint cards</h3>
+      <div class="ccards">${S.constraints.map(c => `
+        <button class="ccard clickable ${c.strength}" data-insp="constraint:${c.id}" data-hl="${c.id}">
+          <div class="spread"><span class="ct">${esc(c.chip)}</span><span class="tag">${c.strength}${c.strength === "soft" ? " · " + c.weight : ""}</span></div>
+          <div class="muted xs mono" style="margin-top:4px">${esc(c.type)}</div>
+          <div class="xs faint">Turns: ${c.dials.map(d => esc((allDials().find(x => x.id === d) || {}).name || d)).join(", ")}</div>
+        </button>`).join("")}</div>
+      <div class="qcard">
+        <div class="spread"><h3>Clarifying question</h3><span class="badge b-code">asked by the route optimiser</span></div>
+        <p style="margin-top:6px;font-size:16px">“${esc(q.question)}”</p>
+        <div class="qopts">${q.options.map(o => `<span class="qopt ${o.label === q.selected ? "sel" : ""}">${esc(o.label)}${o.label === q.selected ? " ✓" : ""}</span>`).join("")}</div>
+        <div class="why stack">
+          <div><b>Why we asked.</b> ${esc(q.trigger)}</div>
+          <div><b>What each answer would change</b><ul style="margin:4px 0 0;padding-left:18px">${q.options.map(o => `<li><b>${esc(o.label)}:</b> ${esc(o.effect)}</li>`).join("")}</ul></div>
+          <div><b>Deliberately not asked</b> (defaults used):<div class="row" style="margin-top:6px">${q.notAsked.map(n => `<span class="chip" title="${esc(n.q)}">${esc(n.q)}: ${esc(n.default)}</span>`).join("")}</div></div>
+          <div><button class="link" data-go="2">See the tie in Step ③ →</button></div>
+        </div>
+      </div>
+      <h3>Constraint chips — as the traveller sees them</h3>
+      <div class="row">${S.constraints.map(c => `<button class="chip" data-insp="constraint:${c.id}">${esc(c.chip)}</button>`).join("")}</div>
+      <p class="note">${esc(S.meta.flowLine)}</p>
+    </div>`;
+  };
+
+  // ② Trip Dials
+  STEP_RENDER.dials = () => {
+    const view = state.ui.dialView;
+    const body = view === "table" ? dialsTable() : `<div class="dgroups">${S.dialGroups.map(g => `
+      <div class="card dgroup"><h3>${g.icon} ${esc(g.name)}</h3>${g.dials.map(dialRow).join("")}</div>`).join("")}</div>`;
+    return `<div class="stack">
+      <div class="spread"><p class="note code">${esc(S.dialTagline)}</p>
+        <div class="seg" role="group" aria-label="Dial view">
+          <button data-ui="dialView=sliders" aria-pressed="${view === "sliders"}">Dials</button>
+          <button data-ui="dialView=table" aria-pressed="${view === "table"}">Table</button></div></div>
+      <p class="small muted">Presets applied: ${S.presetsApplied.map(p => `<span class="chip">${esc(p)}</span>`).join(" ")} · Rule: ${esc(S.dialRule)} · <span class="faint">faint mark = default, dot = final</span></p>
+      ${body}
+      <p class="note">${esc(S.meta.flowLine)}</p>
+    </div>`;
+  };
+  function dialPos(d, v) {
+    const r = S.dialRanges[d.id]; if (!r) return null;
+    const n = typeof v === "string" && v.includes(":") ? toMin(v) : Number(v);
+    return Math.min(100, Math.max(0, (n - r[0]) / (r[1] - r[0]) * 100));
+  }
+  function dialRow(d) {
+    const moved = d.movedBy.map(m => `<div class="moved">${esc(d.name)}${typeof d.final === "object" ? ": " : " → " + esc(fmtVal(d.final)) + " — "}${esc(m.note)}</div>`).join("");
+    let viz;
+    if (S.dialRanges[d.id]) {
+      const a = dialPos(d, d.default), b = dialPos(d, d.final);
+      viz = `<div class="track" aria-hidden="true"><span class="fill" style="left:${Math.min(a, b)}%;width:${Math.abs(b - a)}%"></span><span class="def" style="left:${a}%"></span><span class="fin" style="left:${b}%"></span></div>`;
+    } else if (d.id === "interestWeights") {
+      viz = `<div style="margin-top:6px">${Object.keys(d.final).map(k => `<div class="row xs" style="gap:6px;flex-wrap:nowrap"><span style="width:80px">${esc(k)}</span>
+        <div class="track" style="flex:1;margin:0"><span class="def" style="left:${d.default[k] * 100}%"></span><span class="fin" style="left:${d.final[k] * 100}%;width:10px;height:10px;margin-left:-5px;top:-2px"></span></div>
+        <span class="mono" style="width:30px;text-align:right">${d.final[k]}</span></div>`).join("")}</div>`;
+    } else {
+      viz = d.movedBy.length ? `<div class="pillchg"><span class="tag strike">${esc(fmtVal(d.default))}</span>→<span class="tag code">${esc(fmtVal(d.final))}</span></div>` : "";
+    }
+    const unit = S.dialRanges[d.id] && !String(d.final).includes(":") ? ` <span class="faint">${esc(d.unit)}</span>` : "";
+    const val = d.id === "interestWeights" ? "" : `${d.movedBy.length ? `<span class="faint">${esc(fmtVal(d.default))} →</span> ` : ""}<b>${esc(fmtVal(d.final))}</b>${unit}`;
+    return `<div class="dial" data-insp="dial:${d.id}" data-dial="${d.id}" tabindex="0" role="button" aria-label="${esc(d.name)} details">
+      <div class="dn"><span>${esc(d.name)}</span><span class="dv">${d.id === "mealWindows" ? "" : val}</span></div>${viz}${moved}</div>`;
+  }
+  function dialsTable() {
+    return `<div class="card tscroll"><table class="t"><thead><tr><th>Dial</th><th>Default</th><th>Dial Presets</th><th>Chat constraints</th><th>Final</th></tr></thead><tbody>
+      ${allDials().map(d => `<tr data-insp="dial:${d.id}" data-dial="${d.id}" class="clickable"><td>${d.group.icon} ${esc(d.name)}</td><td class="faint">${esc(fmtVal(d.default))}</td>
+      <td>${esc(fmtVal(d.preset))}</td><td>${d.chat == null ? '<span class="faint">—</span>' : `<span class="tag ai">${esc(fmtVal(d.chat))}</span>`}</td><td><b>${esc(fmtVal(d.final))}</b></td></tr>`).join("")}
+      </tbody></table></div>`;
+  }
+
+  // ③ Gateways & Route
+  const cityById = id => byId(S.cities, id);
+  const cityByName = name => S.cities.find(c => c.name === name || c.name.startsWith(name.split(" ")[0]));
+  STEP_RENDER.route = () => {
+    const g = S.gateways;
+    const winner = S.routes.find(r => r.winner);
+    const sorted = S.routes.slice().sort((a, b) => (b.valid - a.valid) || (b.total - a.total));
+    return `<div class="stack">
+      <div class="card"><div class="spread"><h3>Gateways</h3><span class="badge b-code">Code</span></div>
+        <div class="grid2" style="margin-top:8px">${g.options.map(o => `
+          <div class="card tight" style="${o.id === g.winner ? "border-color:var(--code);box-shadow:0 0 0 2px var(--code-bg)" : ""}">
+            <div class="spread"><b>${esc(o.name)}</b>${o.id === g.winner ? '<span class="badge b-ok">✔ chosen</span>' : ""}</div>
+            <table class="t" style="margin-top:6px"><tbody>
+              <tr><td>Est. fare difference</td><td class="num">${o.fareDeltaINR ? "+₹" + o.fareDeltaINR.toLocaleString("en-IN") : "baseline"}${o.est ? " (est.)" : ""}</td></tr>
+              <tr><td>Backtracking</td><td class="num">${o.backtrackH ? "~" + o.backtrackH + " h" : "none"}${o.halfDayLost ? " + half a day" : ""}</td></tr>
+              <tr><td>Time saved</td><td class="num">${o.timeSavedH ? "~" + o.timeSavedH + " h" : "—"}</td></tr>
+            </tbody></table></div>`).join("")}</div>
+        <p class="note code" style="margin-top:8px">${esc(g.reason)} Winner becomes the fixed start and end of every route below.</p>
+      </div>
+      <div class="grid2">
+        <div class="mapbox">${routeMap(winner)}</div>
+        <div class="stack"><h3>City classification</h3><div class="cls">${S.cities.map(c => `
+          <div class="card tight clickable" data-insp="city:${c.id}"><div class="spread"><b>${esc(c.name)}</b><span class="tag ${c.role === "rejected" ? "" : "code"}">${c.role === "alt" ? "tie alternative" : c.role === "daytrip" ? "day trip" : c.role}</span></div>
+          <div class="xs muted" style="margin-top:3px">${esc(c.reason)}</div>${c.rule ? `<div class="xs bad">Rule: ${esc(c.rule)}</div>` : ""}</div>`).join("")}</div></div>
+      </div>
+      <div class="card tscroll lb"><div class="spread"><h3>Route leaderboard</h3><button class="link small" data-insp="formula:route">Scoring formula</button></div>
+        <table class="t" style="margin-top:6px"><thead><tr><th>#</th><th>Ordering</th><th class="num">Transit h</th><th class="num">Backtrack</th><th class="num">Fatigue</th><th class="num">Hotel changes</th><th class="num">Fit</th><th class="num">Total</th></tr></thead><tbody>
+        ${sorted.map(r => `<tr class="${r.valid ? "" : "inv"} ${r.tie ? "tie" : ""} ${r.winner ? "win" : ""}" data-insp="route:${r.id}">
+          <td>${r.id}</td><td class="ord">${r.order.map(esc).join(" → ")}
+            ${r.valid ? "" : `<div class="xs bad" style="text-decoration:none">✘ ${esc(r.violated)}</div>`}
+            ${r.tie ? `<div><button class="badge b-ai" data-go="0">Tie → resolved by your answer</button> <span class="xs muted">${esc(r.note)}</span></div>` : ""}</td>
+          <td class="num">${r.transitH}</td><td class="num">${r.backtrack}</td><td class="num">${r.fatigue}</td><td class="num">${r.hotelChanges}</td><td class="num">${r.fit}</td><td class="num"><b>${r.total}</b>${r.winner ? ' <span class="ok">✔</span>' : ""}</td></tr>`).join("")}
+        </tbody></table>
+        <p class="xs muted" style="margin-top:6px">Top two within ${S.tieMarginPct}% and differ on an unknown preference (Mt Fuji) → one question asked. Answer: “${esc(S.clarifyingQuestion.selected)}” → ${esc(winner.id)} kept.</p>
+      </div>
+    </div>`;
+  };
+  function routeMap(winner) {
+    const pts = winner.order.map(n => cityByName(n)).filter(Boolean);
+    const edges = S.edges.map(e => {
+      const a = cityById(e.from), b = cityById(e.to); if (!a || !b) return "";
+      const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+      return `<line class="edge" x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}"/><text class="edge-lbl" x="${mx + 0.8}" y="${my - 0.6}">${fmtDur(e.mins)}${e.est ? "*" : ""}</text>`;
+    }).join("");
+    return `<svg class="map" viewBox="0 0 100 74" role="img" aria-label="Stylised map of candidate cities and the winning route">
+      <path class="land" d="M3,60 C12,50 26,52 33,46 C37,32 40,8 52,5 C62,4 68,18 76,22 C84,16 92,12 97,18 C99,32 98,50 90,60 C82,67 70,65 60,66 C50,70 40,72 28,68 C18,66 5,70 3,60 Z"/>
+      ${edges}
+      <polyline class="route" points="${pts.map(p => `${p.x},${p.y}`).join(" ")}"/>
+      ${S.cities.map(c => `<g class="city ${c.role}" data-insp="city:${c.id}" style="cursor:pointer"><circle cx="${c.x}" cy="${c.y}" r="${c.role === "base" ? 1.6 : 1.2}"/><text x="${c.label === "l" ? c.x - 2 : c.label === "b" ? c.x : c.x + 2}" y="${c.label === "b" ? c.y + 4.4 : c.y + 1}" text-anchor="${c.label === "l" ? "end" : c.label === "b" ? "middle" : "start"}">${esc(c.name)}</text></g>`).join("")}
+      <text x="2" y="72.5" class="edge-lbl">Door-to-door times · * estimated · dashed = chosen route</text>
+    </svg>`;
+  }
+
+  // ④ Nights
+  STEP_RENDER.nights = () => {
+    const total = S.legs.reduce((a, l) => a + l.nights, 0);
+    const nightDates = []; for (let i = 0; i < total; i++) nightDates.push(new Date(dateOf(S.trip.startDate).getTime() + i * 864e5).toISOString().slice(0, 10));
+    const shades = [70, 55, 85, 62, 78, 48];
+    return `<div class="stack">
+      <div class="card tscroll"><div class="spread"><h3>Demand per city</h3><span class="xs muted">Usable hours/day: ${S.usableHoursPerDay}</span></div>
+        <table class="t" style="margin-top:6px"><thead><tr><th>City</th><th class="num">Matched POI h</th><th class="num">Demand days</th><th class="num">Min</th><th class="num">Cap</th><th>Adjustments</th><th class="num">Nights</th></tr></thead><tbody>
+        ${S.nightsDemand.map(n => `<tr><td>${esc(n.city)}</td><td class="num">${n.poiHours}</td><td class="num">${n.demandDays.toFixed(1)}</td><td class="num">${n.minNights}</td><td class="num">${n.cap}</td>
+          <td class="xs">${[n.arrivalHalfDay ? "arrival half-day" : "", n.travelLoss ? `travel-day loss −${n.travelLoss}` : "", n.fixed || ""].filter(Boolean).map(esc).join(" · ")}</td><td class="num"><b>${n.nights}</b></td></tr>`).join("")}
+        <tr><td colspan="6"><b>Total</b></td><td class="num"><b>${total}</b> ${total === S.trip.nights ? '<span class="ok">✔</span>' : '<span class="bad">✘</span>'}</td></tr></tbody></table>
+        <p class="xs muted" style="margin-top:6px">${esc(S.nightsNote)}</p>
+      </div>
+      <div class="card"><h3>Allocation — ${total} nights</h3>
+        <div class="nbar" style="margin-top:10px">${S.legs.map((l, i) => `<div class="seg-n" style="flex:${l.nights};background:color-mix(in srgb, ${l.splurge ? "var(--ext)" : "var(--code)"} ${shades[i % shades.length]}%, #000)" title="${esc(l.city)} ${l.nights}N">
+          <b>${esc(l.city)} ${l.nights}N</b><span>${dm(l.from)}–${dm(l.to)}</span></div>`).join("")}</div>
+        <div class="ticks" style="grid-template-columns:repeat(${total},1fr)">${nightDates.map(d => `<span title="Night of ${wd(d)} ${dm(d)}">${dateOf(d).getUTCDate()}</span>`).join("")}</div>
+        <p class="xs faint" style="margin-top:2px">Night of each date, Nov ${S.trip.startDate.slice(0, 4)}. Amber = splurge ryokan (fixed 1 night).</p>
+      </div>
+      <div class="grid2">
+        <div class="card"><div class="spread"><h3>AI nudge</h3><span class="badge b-ai">AI ±1</span></div>
+          <p class="small" style="margin-top:6px">Proposed: <b>${esc(S.aiNudge.proposed)}</b></p><p class="small bad" style="margin-top:4px">✘ ${esc(S.aiNudge.result)}</p></div>
+        <div class="card" style="border-color:var(--ext-line)"><div class="spread"><h3>Tradeoff: Hiroshima</h3><span class="badge b-ext">dropped</span></div>
+          <p class="small" style="margin-top:6px">${esc(S.hiroshimaTradeoff.text)}</p>
+          <button class="btn" style="margin-top:8px" data-insp="edit:4">+ ${esc(S.hiroshimaTradeoff.option)}</button></div>
+      </div>
+    </div>`;
+  };
+
+  // ⑤ Stay
+  STEP_RENDER.stay = () => `<div class="stack">
+    <p class="small muted">Code scores 2–3 candidate areas per city (avg travel time to that city's likely POIs, walkability, price band, vibe). AI picks one and gives a one-line reason; code checks the pick is on the shortlist. Planning only — no booking.</p>
+    <div class="grid3">${S.stays.map(st => `<div class="card ${st.fixed ? "" : ""}" style="${st.fixed ? "border-color:var(--ext-line)" : ""}">
+      <div class="spread"><h3>${esc(st.city)}</h3>${st.fixed ? '<span class="badge b-ext">fixed stay</span>' : '<span class="badge b-ai">AI pick</span>'}</div>
+      <table class="t" style="margin-top:6px"><thead><tr><th>Area</th><th class="num">Avg min</th><th class="num">Walk</th><th>Price</th></tr></thead><tbody>
+      ${st.candidates.map(c => `<tr style="${c.area === st.pick ? "font-weight:650" : ""}"><td>${c.area === st.pick ? "✔ " : ""}${esc(c.area)}<div class="xs faint" style="font-weight:400">${esc(c.vibe)}</div></td><td class="num">${c.travelMin}</td><td class="num">${c.walk}/10</td><td>${esc(c.price)}</td></tr>`).join("")}
+      </tbody></table>
+      <p class="note ${st.fixed ? "ext" : "ai"}" style="margin-top:8px">${esc(st.reason)}</p>
+      <p class="xs muted" style="margin-top:6px">${esc(st.priceBand)} · e.g. ${st.examples.map(esc).join(", ")}</p></div>`).join("")}</div>
+  </div>`;
+
+  // ⑥ Candidates
+  STEP_RENDER.candidates = () => {
+    const max = S.funnel[0].count;
+    return `<div class="stack">
+      <div class="card funnel"><div class="spread"><h3>Kyoto funnel</h3><span class="xs muted">Click a layer for removed / down-ranked examples</span></div>
+      ${S.funnel.map((f, i) => `<div class="lay" data-insp="layer:${i}" role="button" tabindex="0">
+        <span class="small">${esc(f.layer)}</span><span class="fbw"><span class="fb" style="display:block;width:${Math.max(4, f.count / max * 100)}%"></span></span><span class="num mono small" style="text-align:right">${f.count.toLocaleString()}</span></div>`).join("")}
+      </div>
+      <div class="card"><h3>Tour vs self-guided</h3>
+        <table class="t" style="margin-top:6px"><tbody>${S.tourVsSelf.map(t => `<tr><td>${esc(t.item)}</td><td><span class="tag ${t.decision === "Added" ? "code" : ""}">${esc(t.decision)}</span></td><td class="xs muted">${esc(t.why)}</td></tr>`).join("")}</tbody></table></div>
+      <p class="note code">This pool is the only thing AI may pick from in Step ⑦.</p>
+    </div>`;
+  };
+
+  // ⑦ Assign days
+  STEP_RENDER.assign = () => {
+    const used = new Set(S.kyotoFrames.flatMap(f => f.picks));
+    const areas = [...new Set(S.kyotoPool.map(p => p.area))];
+    const dayOf = n => S.days.find(d => d.n === n);
+    let delay = 0;
+    return `<div class="stack">
+      <div class="frames">${S.kyotoFrames.map(f => { const d = dayOf(f.day); return `<div class="card tight">
+        <div class="spread"><b>Day ${f.day}</b><span class="xs dt-${f.type}">${f.type}</span></div>
+        <div class="xs faint">${wd(d.date)} ${dm(d.date)}</div>
+        <div class="bar" style="margin:6px 0" title="Capacity ${f.picks.length}/${f.capacity}"><i style="width:${f.picks.length / f.capacity * 100}%"></i></div>
+        <div class="xs">Capacity ${f.picks.length}/${f.capacity} · Energy: ${esc(f.energy)}</div>
+        ${f.fixed.map(x => `<div class="xs muted">📌 ${esc(x)}</div>`).join("")}${f.closures.map(x => `<div class="xs muted">🚫 ${esc(x)}</div>`).join("")}</div>`; }).join("")}</div>
+      <div class="assign">
+        <div class="pool"><h4>Candidate pool (from code)</h4>${areas.map(a => `<div class="grp"><div class="xs faint">${esc(a)}</div>
+          ${S.kyotoPool.filter(p => p.area === a).map(p => `<div class="pc ${used.has(p.id) ? "used" : ""}">${esc(p.name)}</div>`).join("")}</div>`).join("")}</div>
+        <div><h4>Days (AI grouping)</h4><div class="frames" style="margin-top:6px">${S.kyotoFrames.map(f => `<div class="dcol">
+          <div class="small" style="font-weight:650">Day ${f.day}</div><div class="xs muted">${esc(f.theme)}</div>
+          ${f.picks.map(id => { const p = poi(id); delay += 60; return `<div class="pc" style="animation-delay:${delay}ms"><div>${esc(p.name)}</div><span class="tag ai">why: ${esc(p.why)}</span></div>`; }).join("")}</div>`).join("")}</div></div>
+      </div>
+      <div class="card"><div class="spread"><h3>Guardrails</h3><span class="badge b-code">Code</span></div>
+        <div class="guard" style="margin-top:6px">${S.guardrails.map(g => `<span class="ok">✔ ${esc(g)}</span>`).join("")}</div></div>
+    </div>`;
+  };
+
+  // ⑧ Schedule
+  STEP_RENDER.schedule = () => {
+    const d11 = S.days.find(d => d.n === 11);
+    const start = toMin(S.dialGroups[0].dials.find(d => d.id === "dayStart").final), end = toMin("21:00"), span = end - start;
+    const pct = m => (m - start) / span * 100;
+    const ICON = { walk: "🚶", bus: "🚌", train: "🚆", taxi: "🚕" };
+    const axis = []; for (let m = start; m <= end; m += 60) axis.push(`<span style="left:${pct(m)}%">${fmtMin(m).slice(0, 2)}</span>`);
+    const rows = S.day11Timeline.map(b => {
+      const s = toMin(b.start), e = toMin(b.end);
+      let bg = "";
+      if (b.open) {
+        const [os, oe] = b.open === "24h" ? [start, end] : b.open.split("–").map(toMin);
+        bg += `<span class="g-band" style="left:${pct(Math.max(os, start))}%;width:${pct(Math.min(oe, end)) - pct(Math.max(os, start))}%" title="Open ${esc(b.open)}"></span>`;
+      }
+      const curve = b.poi && S.crowdCurves[b.poi];
+      if (curve) {
+        const pts = curve.map((v, i) => `${(i / (curve.length - 1)) * 100},${100 - v * 100}`).join(" L");
+        bg += `<svg class="g-crowd" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path d="M0,100 L${pts} L100,100 Z"/></svg>`;
+      }
+      const label = b.kind === "transfer" ? `${ICON[b.mode] || ""} ${b.mins} min` : b.label;
+      const rowLbl = b.kind === "transfer" ? `<span class="faint">${ICON[b.mode] || ""} ${esc(b.label || b.mode)}</span>` : esc(b.label);
+      return `<div class="g-row"><span class="lbl" title="${esc(b.label || "")}">${rowLbl}</span><div class="g-lane">${bg}
+        <span class="g-blk k-${b.kind}" style="left:${pct(s)}%;width:${Math.max(pct(e) - pct(s), 1.2)}%" title="${esc(b.start)}–${esc(b.end)} ${esc(label)}">${b.kind === "transfer" || e - s < 35 ? "" : esc(b.start)}</span></div></div>`;
+    }).join("");
+    const P = S.penalty, w = P.weights;
+    const sc = o => w.photo * o.photoBonus - w.crowd * o.crowd - w.lateStart * o.lateStart;
+    const best = P.options.reduce((a, b) => sc(b) > sc(a) ? b : a);
+    const ord = S.day11Orders[state.ui.day11Order];
+    return `<div class="stack">
+      <div class="gantt"><div class="spread"><h3>Day 11 · ${wd(d11.date)} ${dm(d11.date)} · Kyoto</h3><span class="xs muted">green band = open · amber curve = crowd (est.) · hatched = buffer</span></div>
+        <div class="g-axis" style="margin-top:6px">${axis.join("")}</div>${rows}</div>
+      <div class="card"><div class="spread"><h3>Penalty calculator — ${esc(P.item)}</h3><button class="link small" data-insp="formula:penalty">Formula</button></div>
+        <p class="mono xs muted" style="margin-top:4px">${esc(P.formula)} · weights: late ${w.lateStart}, crowd ${w.crowd}, photo ${w.photo}</p>
+        <div class="pen" style="margin-top:8px">${P.options.map(o => `<div class="opt ${o === best ? "win" : ""}"><div class="spread"><b>${o.time}</b>${o === best ? '<span class="badge b-ok">✔ winner</span>' : ""}</div>
+          <div class="xs" style="margin-top:4px">Late-start penalty ${o.lateStart} · Crowd penalty ${o.crowd} · Golden-hour photo bonus ${o.photoBonus}</div>
+          <div class="mono small" style="margin-top:4px">score = ${sc(o).toFixed(2)}</div></div>`).join("")}</div></div>
+      <div class="card"><div class="spread"><h3>Stop order</h3>
+        <div class="seg" role="group" aria-label="Order"><button data-ui="day11Order=naive" aria-pressed="${state.ui.day11Order === "naive"}">Naive</button><button data-ui="day11Order=optimised" aria-pressed="${state.ui.day11Order === "optimised"}">Optimised</button></div></div>
+        <div class="row small" style="margin-top:8px">${ord.stops.map((s, i) => `<span class="chip">${i + 1}. ${esc(s)}</span>${i < ord.legs.length - 1 ? `<span class="faint">→ ${ord.legs[i + 1]}′</span>` : ""}`).join("")}</div>
+        <p class="small" style="margin-top:8px">Total travel: <b>${ord.mins} min</b> <span class="muted">(naive ${S.day11Orders.naive.mins} vs optimised ${S.day11Orders.optimised.mins} — saves ${S.day11Orders.naive.mins - S.day11Orders.optimised.mins} min)</span></p></div>
+    </div>`;
+  };
+
+  // ⑨ Validate & Repair
+  STEP_RENDER.validate = () => `<div class="stack">
+    <div class="grid2">
+      <div class="card"><h3>Hard checks</h3><div class="checks" style="margin-top:8px;grid-template-columns:1fr">${S.hardCheckResults.map(c => `
+        <div class="chk" data-insp="check:${esc(c.rule)}" role="button" tabindex="0"><span class="ic ok">✔</span><span style="flex:1">${esc(c.rule)}</span>
+        <span class="xs faint">${c.checked} checked${c.failedBefore ? ` · <span class="bad">${c.failedBefore} failed → repaired</span>` : ""}</span></div>`).join("")}</div></div>
+      <div class="card"><h3>Soft meters</h3>${S.softMeters.map(m => `<div style="margin-top:10px"><div class="spread small"><span>${esc(m.name)}</span><span class="mono xs">${Math.round(m.value * 100)}%</span></div>
+        <div class="bar"><i style="width:${m.value * 100}%;background:${m.name === "Crowd exposure" ? "var(--ext)" : "var(--code)"}"></i></div></div>`).join("")}
+        <p class="xs muted" style="margin-top:8px">Crowd exposure: lower is better.</p></div>
+    </div>
+    <div class="card"><h3>Failures and repairs</h3>${S.validationFailures.map(v => `<div style="margin-top:10px"><div class="xs faint">Rule: ${esc(v.rule)}</div>
+      <div class="ba"><div class="b">✘ ${esc(v.before)}</div><div class="arr faint">→</div><div class="a">✔ ${esc(v.after)}</div></div></div>`).join("")}</div>
+    <div class="card"><h3>Feedback loop</h3><div class="loop" style="margin-top:8px">${S.feedbackLoop.map((x, i) => `<span class="n">${esc(x)}</span>${i < S.feedbackLoop.length - 1 ? '<span class="faint">→</span>' : ""}`).join("")}</div>
+      <p class="xs muted" style="margin-top:6px">Each rung is tried only if the one before can't fix it. Asking the user is the last resort.</p></div>
+  </div>`;
+
+  // ⑩ Narrate
+  function renderTokens(text, mode) {
+    return esc(text).replace(/\{\{poi:([a-z0-9_]+)\}\}/g, (m, id) => {
+      const p = poi(id);
+      return mode === "raw" ? `<span class="tok">${esc(m)}</span>` : `<span class="rendered" title="${esc(m)}">${esc(p ? p.name : id)}</span>`;
+    });
+  }
+  STEP_RENDER.narrate = () => {
+    const N = S.narration, mode = state.ui.narrView;
+    return `<div class="stack">
+      <div class="narr">
+        <div class="card"><h3>Fact sheet</h3><span class="badge b-code" style="margin:6px 0">Code</span><pre>${esc(JSON.stringify(N.factSheet, null, 2))}</pre></div>
+        <div class="card"><div class="spread"><h3>Generated text</h3><div class="seg"><button data-ui="narrView=raw" aria-pressed="${mode === "raw"}">Tokens</button><button data-ui="narrView=rendered" aria-pressed="${mode === "rendered"}">Rendered</button></div></div>
+          <span class="badge b-ai" style="margin:6px 0">AI</span><p style="line-height:1.7">${renderTokens(N.generated, mode)}</p></div>
+        <div class="card"><h3>Grounding check</h3><span class="badge b-code" style="margin:6px 0">Code</span>${S.groundingChecks.map(g => `<div class="gl"><span class="${g.ok ? "ok" : "bad"}">${g.ok ? "✔" : "✘"}</span><span><b>${renderTokens(g.claim, "rendered")}</b> <span class="faint">↔ ${esc(g.fact)}</span></span></div>`).join("")}</div>
+      </div>
+      <div class="card" style="border-color:var(--bad)"><h3>Rejected example</h3>
+        <div class="ba" style="margin-top:8px"><div class="b">AI wrote: “${esc(N.rejected.text)}” — ${esc(N.rejected.reason)}</div><div class="arr faint">→</div><div class="a">${esc(N.rejected.action)}</div></div></div>
+      <div class="grid2">
+        <div class="card"><h4>Trip summary — as the traveller sees it</h4><p style="margin-top:6px;font-size:16px">${esc(N.tripSummary)}</p></div>
+        <div class="card"><h4>Day 11 intro</h4><p style="margin-top:6px;font-size:16px">${esc(N.dayIntro11)}</p></div>
+      </div>
+    </div>`;
+  };
+
+  // ─── Output ───────────────────────────────────────────────────────
+  function routeStrip() {
+    return `<div class="routestrip">${S.legs.map((l, i) => `<div class="leg" style="${l.splurge ? "border-color:var(--ext-line)" : ""}"><b>${esc(l.city)} · ${l.nights}N</b><span class="xs faint">${dm(l.from)}–${dm(l.to)}</span></div>
+      ${i < S.legs.length - 1 ? `<div class="tr">→<br>${esc(l.transferOut)}</div>` : ""}`).join("")}</div>`;
+  }
+  function dayCards() {
+    return `<div class="daycards">${S.days.map(d => `<button class="dcard" data-insp="day:${d.n}" data-day="${d.n}">
+      <div class="dh"><span>Day ${d.n} · ${wd(d.date)} ${dm(d.date)}</span><span class="dt-${d.type}">${d.type}</span></div>
+      <div class="xs muted">${esc(d.city)}</div><div class="th">${esc(d.theme)}</div>
+      <ul>${d.highlights.slice(0, 3).map(h => `<li>${esc(h)}</li>`).join("")}</ul></button>`).join("")}</div>`;
+  }
+  function renderOutput() {
+    const nights = S.legs.reduce((a, l) => a + l.nights, 0);
+    return `<section class="step stack" data-step="out">
+      <div class="step-head"><div><div class="ttl"><span class="big">OUTPUT</span><h2>Validated, editable itinerary</h2></div>
+        <p class="headline">${esc(S.narration.tripSummary)}</p></div>
+        <div class="row"><span class="badge b-ok">✔ all hard checks pass</span><span class="badge b-data">${S.days.length} days · ${nights} nights</span></div></div>
+      <div class="card">${routeStrip()}</div>
+      ${dayCards()}
+      <p class="xs faint">Click a day card for its details. <button class="link" data-tab="edit">Edit this plan →</button></p>
+    </section>`;
+  }
+
+  // ═══ INSPECTOR ════════════════════════════════════════════════════
+  function openInspector(kind, title, html) {
+    $("#insp").innerHTML = `<div class="insp-head"><div><div class="insp-kind">${esc(kind)}</div><h3>${esc(title)}</h3></div>
+      <button class="insp-close" id="inspClose" aria-label="Close inspector">✕</button></div><div class="insp-body">${html}</div>`;
+    $("#insp").classList.add("open");
+  }
+  function closeInspector() { $("#insp").classList.remove("open"); }
+  function provBlock(p) {
+    return `<dl class="prov">${Object.entries(p).map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("")}</dl>`;
+  }
+  function tableRows(name) {
+    const d = S.tableDefs[name];
+    switch (d.derived) {
+      case "constraints": return { cols: ["id", "type", "strength", "weight"], rows: S.constraints.map(c => [c.id, c.type, c.strength, c.weight]) };
+      case "dials": return { cols: ["dial", "default", "final"], rows: allDials().map(x => [x.id, fmtVal(x.default), fmtVal(x.final)]) };
+      case "cities": return { cols: ["city_id", "name", "role"], rows: S.cities.map(c => [c.id, c.name, c.role]) };
+      case "edges": return { cols: ["from", "to", "mins", "mode"], rows: S.edges.map(e => [e.from, e.to, e.mins, e.mode]) };
+      default: return { cols: d.cols, rows: d.rows };
+    }
+  }
+  const INSPECT = {
+    constraint(id) {
+      const c = byId(S.constraints, id);
+      const dials = c.dials.map(d => allDials().find(x => x.id === d)).filter(Boolean);
+      openInspector("Constraint", c.chip, `
+        <p class="small">From: “<mark>${esc(c.phrase)}</mark>”</p>
+        <div class="row"><span class="badge ${c.strength === "hard" ? "b-bad" : "b-user"}">${c.strength}</span><span class="badge b-user">weight ${c.weight}${typeof S.weights[c.weight] === "number" ? " = " + S.weights[c.weight] : ""}</span></div>
+        <pre>${esc(JSON.stringify(c.json, null, 2))}</pre>
+        <h4>Turns these dials</h4>${dials.map(d => `<div class="small">${d.group.icon} ${esc(d.name)}: <span class="faint">${esc(fmtVal(d.default))}</span> → <b>${esc(fmtVal(d.final))}</b></div>`).join("")}
+        <h4>Steps affected</h4><div class="row">${c.steps.map(n => `<button class="chip" data-go="${n - 1}">${n}. ${esc(S.steps[n - 1].name)}</button>`).join("")}</div>`);
+    },
+    dial(id) {
+      const d = allDials().find(x => x.id === id);
+      openInspector("Trip Dial · " + d.group.name, d.name, `
+        <table class="t"><tbody><tr><td>Default</td><td>${esc(fmtVal(d.default))}</td></tr><tr><td>Dial Presets</td><td>${esc(fmtVal(d.preset))}</td></tr>
+        <tr><td>Chat constraints</td><td>${esc(fmtVal(d.chat))}</td></tr><tr><td><b>Final</b></td><td><b>${esc(fmtVal(d.final))}</b></td></tr></tbody></table>
+        <h4>History</h4>${d.movedBy.length ? d.movedBy.map(m => { const c = byId(S.constraints, m.c); return `<div class="small">↳ ${esc(m.note)} <button class="link xs" data-insp="constraint:${c.id}">(${esc(c.chip)})</button></div>`; }).join("") : '<p class="small faint">Unchanged from default.</p>'}
+        <p class="xs muted">${esc(S.dialRule)} Unit: ${esc(d.unit)}.</p>`);
+    },
+    table(name) {
+      const d = S.tableDefs[name], t = tableRows(name);
+      openInspector("Data table", name, `<p class="small">${esc(d.desc)}</p>
+        <div class="row">${d.sources.map(s => `<span class="badge b-data">${esc(S.sourceNames[s] || s)}</span>`).join("")}</div>
+        <h4>Schema</h4><p class="mono xs">${t.cols.map(esc).join(" · ")}</p>
+        <h4>Sample rows</h4><div class="tscroll"><table class="t"><thead><tr>${t.cols.map(c => `<th>${esc(c)}</th>`).join("")}</tr></thead><tbody>
+        ${t.rows.slice(0, 5).map(r => `<tr>${r.map(v => `<td class="xs">${esc(v)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>
+        <h4>Provenance</h4>${provBlock({ sources: d.sources.map(s => S.sourceNames[s] || s).join(", "), confidence: "medium (illustrative)", last_verified: "2026-09-15 (illustrative)" })}`);
+    },
+    rules() {
+      openInspector("Rules", "Constraint types & weights", `
+        <h4>Closed list of constraint types</h4><div class="row">${S.constraintTypes.map(t => `<span class="tag">${esc(t)}</span>`).join("")}</div>
+        <h4>Hard vs soft</h4><p class="small"><b>Hard</b> = filter: anything violating it is removed. <b>Soft</b> = weighted penalty in scoring.</p>
+        <h4>Weight levels</h4><table class="t"><tbody>${Object.entries(S.weights).map(([k, v]) => `<tr><td>${esc(k)}</td><td class="mono">${esc(v)}</td></tr>`).join("")}</tbody></table>
+        <h4>When to ask</h4><p class="note ai small">${esc(S.askRule)}</p>`);
+    },
+    city(id) { const c = cityById(id); openInspector("City · " + c.role, c.name, `<p class="small">${esc(c.reason)}</p>${c.rule ? `<p class="small bad">Rule: ${esc(c.rule)}</p>` : ""}
+      <h4>Edges</h4>${S.edges.filter(e => e.from === id || e.to === id).map(e => `<div class="small">${esc(cityById(e.from) ? cityById(e.from).name : e.from)} ↔ ${esc(cityById(e.to) ? cityById(e.to).name : e.to)}: ${fmtDur(e.mins)} · ${esc(e.mode)}${e.est ? " (est.)" : ""}</div>`).join("")}`); },
+    route(id) { const r = byId(S.routes, id); openInspector("Route", r.id, `<p class="small">${r.order.map(esc).join(" → ")}</p>${r.note ? `<p class="small muted">${esc(r.note)}</p>` : ""}
+      ${r.valid ? "" : `<p class="small bad">✘ ${esc(r.violated)}</p>`}<pre>${esc(JSON.stringify({ transit_h: r.transitH, backtrack: r.backtrack, fatigue: r.fatigue, hotel_changes: r.hotelChanges, fit: r.fit, total: r.total }, null, 2))}</pre>`); },
+    formula(id) {
+      if (id === "penalty") { const P = S.penalty; return openInspector("Scoring formula", "Time-slot penalty", `<pre>${esc(P.formula)}</pre><pre>${esc(JSON.stringify(P.weights, null, 2))}</pre><p class="small">Weights come from dials: Day Start (late), Avoid Tags (crowd), Interest Weights (photography).</p>`); }
+      openInspector("Scoring formula", "Route score", `<pre>total = 100 − 2.0·transit_h − 3.0·backtrack − 2.5·fatigue − 1.5·hotel_changes + 1.0·fit\ninvalid if any hard dial rule is violated</pre><p class="small">Illustrative weights. Ties within 4% that differ on an unknown preference trigger one question.</p>`);
+    },
+    layer(i) { const f = S.funnel[+i]; openInspector("Candidate filter", f.layer, `<p class="small">${f.count.toLocaleString()} remain after this layer.</p>
+      ${f.examples.length ? f.examples.map(e => `<div class="card tight small"><b>${esc(e.name)}</b><div class="muted">${esc(e.why)}</div></div>`).join("") : '<p class="small faint">No examples for this layer.</p>'}`); },
+    check(rule) { const c = S.hardCheckResults.find(x => x.rule === rule); openInspector("Validation rule", c.rule, `<p class="small">${esc(c.detail)}</p><p class="small">${c.checked} items checked · ${c.failedBefore ? `<span class="bad">${c.failedBefore} failed</span> → repaired` : '<span class="ok">0 failed</span>'}</p>
+      ${S.validationFailures.filter(v => v.rule === rule).map(v => `<div class="ba"><div class="b">${esc(v.before)}</div><div class="arr">→</div><div class="a">${esc(v.after)}</div></div>`).join("")}`); },
+    day(n) { const d = S.days.find(x => x.n === +n); openInspector(`Day ${d.n} · ${d.type}`, d.theme, `<p class="small">${wd(d.date)} ${dm(d.date)} · ${esc(d.city)}</p><ul class="small">${d.highlights.map(h => `<li>${esc(h)}</li>`).join("")}</ul><p class="xs faint">Full “Anatomy of a day” arrives in Stage 4.</p>`); },
+    edit(id) { const e = byId(S.editRequests, +id); openInspector("Edit request", e.text, `<p class="small">${esc(e.explain)}</p><p class="xs faint">Runs in the Edit loop tab (Stage 4).</p>`); }
+  };
+
+  // ═══ EVENTS ═══════════════════════════════════════════════════════
+  function onClick(e) {
+    const t = e.target.closest("[data-tab],[data-go],[data-ui],[data-insp],#playBtn,#prevBtn,#nextBtn,#inspClose,#themeBtn");
+    if (!t) return;
+    if (t.id === "themeBtn") { const cur = store.get("theme") || "auto"; const nx = THEMES[(THEMES.indexOf(cur) + 1) % THEMES.length]; store.set("theme", nx); applyTheme(nx); return; }
+    if (t.id === "inspClose") return closeInspector();
+    if (t.id === "playBtn") return state.playing ? stopPlay() : startPlay();
+    if (t.id === "prevBtn") { stopPlay(); return goStep(state.step - 1); }
+    if (t.id === "nextBtn") { stopPlay(); return goStep(state.step + 1); }
+    if (t.dataset.tab) return setTab(t.dataset.tab);
+    if (t.dataset.go != null) { e.stopPropagation(); stopPlay(); return goStep(+t.dataset.go); }
+    if (t.dataset.ui) { const [k, v] = t.dataset.ui.split("="); state.ui[k] = v; return renderStep(); }
+    if (t.dataset.insp) { const [kind, ...rest] = t.dataset.insp.split(":"); const fn = INSPECT[kind]; if (fn) fn(rest.join(":")); }
+  }
+  function onKey(e) {
+    if (e.key === "Escape") return closeInspector();
+    const tag = (e.target.tagName || "").toLowerCase();
+    if (["input", "textarea", "select"].includes(tag) || e.metaKey || e.ctrlKey || e.altKey) return;
+    if ((e.key === "Enter" || e.key === " ") && e.target.matches("[role=button][data-insp]")) { e.preventDefault(); e.target.click(); return; }
+    if (tag === "button" && e.key === " ") return;
+    if (e.target.getAttribute("role") === "tab" && (e.key === "ArrowLeft" || e.key === "ArrowRight")) {
+      const i = TABS.findIndex(t => t.id === state.tab), n = TABS[(i + (e.key === "ArrowRight" ? 1 : TABS.length - 1)) % TABS.length];
+      setTab(n.id); $("#tab-" + n.id).focus(); e.preventDefault(); return;
+    }
+    if (state.tab !== "pipeline") return;
+    if (e.key === "ArrowRight") { stopPlay(); goStep(state.step + 1); e.preventDefault(); }
+    else if (e.key === "ArrowLeft") { stopPlay(); goStep(state.step - 1); e.preventDefault(); }
+    else if (e.key === " ") { state.playing ? stopPlay() : startPlay(); e.preventDefault(); }
+  }
+
+  // ═══ BOOT ═════════════════════════════════════════════════════════
+  function boot() {
+    renderHeader(); applyTheme(store.get("theme") || "auto");
+    renderTabs(); renderMain();
+    document.addEventListener("click", onClick);
+    document.addEventListener("keydown", onKey);
+  }
+  boot();
+})();
+
+</script>
+</body>
+</html>

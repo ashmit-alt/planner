@@ -1,4 +1,4 @@
-const S = require("./scenario.js");
+const S = require("../src/scenario.js");
 const wd = d => new Date(d + "T00:00:00Z").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
 const out = [];
 const p = s => out.push(s);

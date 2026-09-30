@@ -9,7 +9,6 @@ const SCENARIO = {
     coreMessage: "Software makes it possible, AI makes it personal.",
     flowLine: "You say it → it becomes a constraint → constraints set the dials → the planner reads the dials.",
     dataLabel: "Illustrative data for demonstration",
-    counters: { aiCalls: 5, codeDecisions: 142, dataTables: 11 },
     aiJobs: [
       "Turn chat into typed constraints",
       "Choose and group activities into days from a code-supplied candidate pool",
@@ -153,17 +152,18 @@ const SCENARIO = {
     reason: "Open-jaw avoids ~2.5 h backtracking + half a day for ~₹6,500 more (est.)."
   },
   cities: [
-    { id: "tokyo", name: "Tokyo", x: 78, y: 60, role: "base", reason: "Arrival gateway; high demand for food, design, coffee." },
-    { id: "hakone", name: "Hakone", x: 70, y: 66, role: "base", reason: "Splurge ryokan w/ private onsen + Fuji views (tie resolved by user)." },
-    { id: "kanazawa", name: "Kanazawa", x: 50, y: 42, role: "base", reason: "Kenroku-en foliage, design, crafts; Hokuriku Shinkansen from Tokyo." },
-    { id: "takayama", name: "Takayama", x: 55, y: 50, role: "base", reason: "Old town + gateway to Shirakawa-go; en route to Kyoto." },
-    { id: "shirakawago", name: "Shirakawa-go", x: 52, y: 46, role: "daytrip", reason: "~50 min from Takayama; no need to overnight." },
-    { id: "kyoto", name: "Kyoto", x: 44, y: 66, role: "base", reason: "Peak foliage late Nov; highest POI demand." },
-    { id: "nara", name: "Nara", x: 45, y: 72, role: "daytrip", reason: "~45 min from Kyoto; demand < 1 day." },
-    { id: "osaka", name: "Osaka", x: 40, y: 72, role: "base", reason: "Exit gateway (KIX); food finale." },
-    { id: "hiroshima", name: "Hiroshima", x: 18, y: 72, role: "rejected", reason: "Adds ~4h of travel for 1 day; with 'don't change hotels every day', we kept longer stays. Add 2 days to include it.", rule: "min_nights_per_base ≥ 2 + transit budget" },
-    { id: "nikko", name: "Nikko", x: 80, y: 48, role: "rejected", reason: "Backtracking: out-and-back from Tokyo against the westward route.", rule: "backtracking penalty" },
-    { id: "kawaguchiko", name: "Kawaguchiko", x: 68, y: 62, role: "rejected", reason: "Overlaps with Hakone for Fuji views.", rule: "duplicate-purpose" }
+    { id: "tokyo", name: "Tokyo", x: 88, y: 44, label: "r", role: "base", reason: "Arrival gateway; high demand for food, design, coffee." },
+    { id: "hakone", name: "Hakone", x: 77, y: 56, label: "b", role: "base", reason: "Splurge ryokan w/ private onsen + Fuji views (tie resolved by user)." },
+    { id: "kanazawa", name: "Kanazawa", x: 50, y: 16, label: "r", role: "base", reason: "Kenroku-en foliage, design, crafts; Hokuriku Shinkansen from Tokyo." },
+    { id: "takayama", name: "Takayama", x: 63, y: 32, label: "r", role: "base", reason: "Old town + gateway to Shirakawa-go; en route to Kyoto." },
+    { id: "shirakawago", name: "Shirakawa-go", x: 58, y: 23, label: "r", role: "daytrip", reason: "~50 min from Takayama; no need to overnight." },
+    { id: "kyoto", name: "Kyoto", x: 42, y: 44, label: "r", role: "base", reason: "Peak foliage late Nov; highest POI demand." },
+    { id: "nara", name: "Nara", x: 46, y: 58, label: "r", role: "daytrip", reason: "~45 min from Kyoto; demand < 1 day." },
+    { id: "osaka", name: "Osaka", x: 34, y: 54, label: "l", role: "base", reason: "Exit gateway (KIX); food finale." },
+    { id: "yamanaka", name: "Yamanaka Onsen", x: 40, y: 11, label: "l", role: "alt", reason: "Onsen town near Kanazawa — alternative ryokan location in route R2 (no Fuji, one fewer hotel change)." },
+    { id: "hiroshima", name: "Hiroshima", x: 11, y: 58, label: "r", role: "rejected", reason: "Adds ~4h of travel for 1 day; with 'don't change hotels every day', we kept longer stays. Add 2 days to include it.", rule: "min_nights_per_base ≥ 2 + transit budget" },
+    { id: "nikko", name: "Nikko", x: 88, y: 26, label: "l", role: "rejected", reason: "Backtracking: out-and-back from Tokyo against the westward route.", rule: "backtracking penalty" },
+    { id: "kawaguchiko", name: "Kawaguchiko", x: 76, y: 45, label: "b", role: "rejected", reason: "Overlaps with Hakone for Fuji views.", rule: "duplicate-purpose" }
   ],
   edges: [
     { from: "tokyo", to: "hakone", mins: 100, mode: "Romancecar", est: true },
@@ -282,6 +282,7 @@ const SCENARIO = {
     { id: "poi_weekenders", name: "Weekenders Coffee", area: "Central", why: "Coffee" },
     { id: "poi_nishiki", name: "Nishiki Market", area: "Central", why: "Food, veg stalls" },
     { id: "poi_fushimi", name: "Fushimi Inari (upper trail)", area: "Fushimi", why: "Photography golden hour, hiking" },
+    { id: "poi_pontocho", name: "Pontocho evening walk", area: "Central", why: "Lantern-lit lanes, veg-friendly dinners" },
     { id: "poi_todaiji", name: "Todai-ji", area: "Nara", why: "Architecture" },
     { id: "poi_naramachi", name: "Naramachi", area: "Nara", why: "Quiet lanes, coffee" },
     { id: "poi_isuien", name: "Isui-en Garden", area: "Nara", why: "Quiet foliage garden" }
@@ -439,6 +440,121 @@ const SCENARIO = {
       answer: "No direct train — the highway bus takes ~2h15 (est.); by rail via Toyama it is ~2h45 (est.).", noPlanChange: true,
       diff: { added: 0, removed: 0, moved: 0, retimed: 0, unchanged: 15 }, explain: "No plan change." }
   ],
+
+
+  // ─── Pipeline steps (meta) ───────────────────────────────────────
+  steps: [
+    { n: 1, id: "understand", name: "Understand", role: "ai", assist: null, timing: "~1.4 s", aiCalls: 1, decisions: 8,
+      headline: "AI turns the chat message into typed constraints from a closed list; code validates every field.",
+      inputs: ["Chat message", "Form: interests, pace, budget, dates"], process: ["LLM extracts constraints (closed type list)", "Code validates schema, types and weights", "Unknown preferences deferred until a tie needs them"], outputs: ["8 constraints", "1 deferred question"],
+      reads: [], writes: ["constraints"] },
+    { n: 2, id: "dials", name: "Trip Dials", role: "code", assist: null, timing: "3 ms", aiCalls: 0, decisions: 18,
+      headline: "Code folds presets and constraints into ~15 Trip Dials; strictest or most explicit wins.",
+      inputs: ["Constraints", "Dial Presets", "Defaults"], process: ["Apply defaults", "Apply presets", "Apply constraints (strictest/explicit wins)"], outputs: ["18 dial positions with history"],
+      reads: ["constraints"], writes: ["trip_dials"] },
+    { n: 3, id: "route", name: "Gateways & Route", role: "code", assist: "user", timing: "42 ms", aiCalls: 0, decisions: 31,
+      headline: "Code picks gateways, classifies cities and scores route orderings; a close tie is handed to the traveller.",
+      inputs: ["Trip Dials", "City catalogue", "Travel-time matrix", "Fares (est.)"], process: ["Compare gateway pairs", "Classify cities: base / day trip / rejected", "Score ~6 orderings", "Tie within 4% → ask one question"], outputs: ["Open-jaw HND → KIX", "Route of 6 bases"],
+      reads: ["trip_dials", "cities", "transport_edges", "travel_time_matrix"], writes: [] },
+    { n: 4, id: "nights", name: "Nights", role: "code", assist: "ai", timing: "6 ms + ~0.8 s", aiCalls: 1, decisions: 12,
+      headline: "Code allocates 14 nights from POI demand; AI may nudge ±1 and code re-checks.",
+      inputs: ["Route", "POI hours per city", "Min Nights per Base"], process: ["Demand days = matched POI hours ÷ usable hours/day", "Apply mins, caps, half-days, travel loss", "AI nudge ±1 → code re-check"], outputs: ["Nights per base with dates"],
+      reads: ["pois", "trip_dials"], writes: ["itinerary_versions"] },
+    { n: 5, id: "stay", name: "Stay", role: "code", assist: "ai", timing: "9 ms + ~1.1 s", aiCalls: 1, decisions: 14,
+      headline: "Code shortlists 2–3 hotel areas per city; AI picks one with a one-line reason.",
+      inputs: ["Bases", "Likely POIs", "Budget dial"], process: ["Score areas: travel time, walkability, price, vibe", "AI picks from shortlist", "Code checks the pick is on the shortlist"], outputs: ["Area + price band + 2 example properties per city"],
+      reads: ["areas", "hotels", "travel_time_matrix"], writes: ["itinerary_versions"] },
+    { n: 6, id: "candidates", name: "Candidates", role: "code", assist: null, timing: "28 ms", aiCalls: 0, decisions: 7,
+      headline: "Code filters the catalogue to ~50 fitting candidates per city — the only pool AI may pick from.",
+      inputs: ["Catalogue", "Dates", "Trip Dials"], process: ["Open on dates", "Fits day window", "Vegetarian meals nearby", "Crowd/quiet scoring", "Interest match"], outputs: ["Top ~50 candidates for Kyoto"],
+      reads: ["pois", "restaurants", "events", "trip_dials"], writes: [] },
+    { n: 7, id: "assign", name: "Assign days", role: "ai", assist: "code", timing: "~1.8 s", aiCalls: 6, decisions: 22,
+      headline: "AI chooses and groups activities into days from the pool; code checks every ID.",
+      inputs: ["Candidate pool", "Day frames"], process: ["AI groups by area and theme", "Code: IDs in pool, no duplicates, closures, capacity"], outputs: ["Themed days with picks"],
+      reads: ["pois", "events"], writes: ["itinerary_versions"] },
+    { n: 8, id: "schedule", name: "Schedule", role: "code", assist: null, timing: "65 ms", aiCalls: 0, decisions: 48,
+      headline: "Code orders and times every stop around opening hours, crowds, meals and transfers.",
+      inputs: ["Day picks", "Opening hours", "Crowd curves", "Travel-time matrix"], process: ["Order stops (min travel)", "Place by penalty score", "Insert meals, coffee, buffers, free time"], outputs: ["Timed day plans"],
+      reads: ["pois", "restaurants", "travel_time_matrix"], writes: ["itinerary_versions"] },
+    { n: 9, id: "validate", name: "Validate & Repair", role: "code", assist: null, timing: "18 ms", aiCalls: 0, decisions: 26,
+      headline: "Code runs every hard check and soft meter; failures are repaired or escalated.",
+      inputs: ["Timed plan", "Trip Dials", "Constraints"], process: ["Hard checks", "Soft meters", "Repair loop: move → re-allocate → ask"], outputs: ["Validated plan v1", "Repair log"],
+      reads: ["pois", "restaurants", "trip_dials", "constraints"], writes: ["itinerary_versions"] },
+    { n: 10, id: "narrate", name: "Narrate", role: "ai", assist: "code", timing: "~1.6 s", aiCalls: 2, decisions: 17,
+      headline: "AI writes narration from a fact sheet; code checks every number and entity against it.",
+      inputs: ["Fact sheet per day"], process: ["AI writes text with {{poi:ID}} tokens", "Code renders tokens to names", "Grounding check; fallback to template"], outputs: ["Trip summary", "Day intros and item notes"],
+      reads: ["itinerary_versions"], writes: ["itinerary_versions"] }
+  ],
+
+  // Numeric dial ranges for the slider view (time in minutes after midnight)
+  dialRanges: {
+    dayStart: [360, 720], dayEnd: [1080, 1440], returnBy: [1200, 1440], activitiesPerDay: [1, 7], freeTime: [0, 180], buffer: [0, 40],
+    walkingLimit: [2, 24], maxContinuousWalk: [5, 60], transitPerDay: [0, 6], taxiThreshold: [5, 45], minNights: [1, 4], maxHotelChanges: [1, 10]
+  },
+
+  // ─── Step ⑦ Kyoto day frames & assignment ────────────────────────
+  kyotoFrames: [
+    { day: 10, type: "travel", capacity: 2, energy: "low — after 3h45 travel", fixed: [], closures: [], theme: "Arrive in Kyoto", picks: ["poi_nishiki", "poi_pontocho"] },
+    { day: 11, type: "full", capacity: 4, energy: "high", fixed: ["Sunset ~16:45"], closures: [], theme: "Zen, design & golden-hour Fushimi", picks: ["poi_weekenders", "poi_kennin", "poi_dnd", "poi_fushimi"] },
+    { day: 12, type: "daytrip", capacity: 3, energy: "medium", fixed: ["Kintetsu to Nara ~45 min"], closures: ["Isui-en closed Tue (est.) — Sat OK"], theme: "Nara day trip", picks: ["poi_todaiji", "poi_isuien", "poi_naramachi"] },
+    { day: 13, type: "full", capacity: 4, energy: "medium", fixed: ["Eikan-do illumination 17:30–20:30 (est.)"], closures: [], theme: "Arashiyama & maple evenings", picks: ["poi_tenryuji", "poi_okochi", "poi_gioji", "poi_eikando"] }
+  ],
+
+  // ─── Step ⑧ extras ───────────────────────────────────────────────
+  crowdCurves: { // hourly 10:00 … 21:00, 0–1 (est.)
+    poi_kennin: [0.3, 0.35, 0.4, 0.4, 0.35, 0.3, 0.2, 0, 0, 0, 0, 0],
+    poi_dnd: [0.2, 0.3, 0.4, 0.45, 0.45, 0.4, 0.35, 0.3, 0, 0, 0, 0],
+    poi_fushimi: [0.75, 0.85, 0.9, 0.95, 0.95, 0.85, 0.6, 0.45, 0.35, 0.3, 0.25, 0.2],
+    poi_weekenders: [0.5, 0.6, 0.5, 0.4, 0.4, 0.35, 0.3, 0.2, 0, 0, 0, 0]
+  },
+  day11Orders: {
+    naive: { stops: ["Fushimi Inari (10:30)", "Kennin-ji", "Weekenders Coffee", "D&Department Kyoto"], legs: [35, 30, 25, 28], mins: 118 },
+    optimised: { stops: ["Weekenders Coffee", "Kennin-ji", "D&Department Kyoto", "Fushimi Inari (16:00)"], legs: [15, 20, 25, 25], mins: 85 }
+  },
+
+  // ─── Step ⑨ extras ───────────────────────────────────────────────
+  hardCheckResults: [
+    { rule: "Open at scheduled time", checked: 58, failedBefore: 1, detail: "Opening hours + weekly closures for each timed stop" },
+    { rule: "No overlaps", checked: 112, failedBefore: 0, detail: "Each block ends before the next starts, incl. transfers" },
+    { rule: "Within day window", checked: 15, failedBefore: 0, detail: "Every day between Day Start and Day End dials" },
+    { rule: "Transit limits", checked: 15, failedBefore: 0, detail: "Transit per Day ≤ 2 h except travel days" },
+    { rule: "No duplicates", checked: 58, failedBefore: 0, detail: "Each POI ID appears at most once" },
+    { rule: "Vegetarian meals present", checked: 28, failedBefore: 1, detail: "Every lunch/dinner has a vegetarian-friendly venue" },
+    { rule: "Ryokan night on Hakone leg", checked: 1, failedBefore: 0, detail: "Hard stay requirement placed on the right night" },
+    { rule: "Return By", checked: 15, failedBefore: 0, detail: "Back at hotel before 22:00" }
+  ],
+
+  // ─── Step ⑩ extras ───────────────────────────────────────────────
+  groundingChecks: [
+    { claim: "{{poi:poi_fushimi}}", kind: "entity", fact: "poi: poi_fushimi", ok: true },
+    { claim: "16:00", kind: "time", fact: "start: 16:00", ok: true },
+    { claim: "35 minutes", kind: "number", fact: "walk_from_station_min: 35", ok: true },
+    { claim: "16:45", kind: "time", fact: "sunset: 16:45", ok: true },
+    { claim: "crowds thin", kind: "claim", fact: "crowd_after_16: medium→low", ok: true }
+  ],
+
+  // ─── Data tables: schema + sample rows ───────────────────────────
+  tableDefs: {
+    constraints: { desc: "Structured constraints from chat + form.", sources: ["user"], derived: "constraints" },
+    trip_dials: { desc: "Dial positions with history.", sources: ["internal"], derived: "dials" },
+    cities: { desc: "Cities with role and coordinates.", sources: ["knowledge", "editorial"], derived: "cities" },
+    transport_edges: { desc: "City-to-city door-to-door times and modes.", sources: ["rail"], derived: "edges" },
+    travel_time_matrix: { desc: "POI-to-POI travel minutes by mode.", sources: ["rail", "places"],
+      cols: ["from", "to", "walk", "transit", "taxi"], rows: [["poi_weekenders", "poi_kennin", 15, 12, 8], ["poi_kennin", "poi_dnd", 25, 20, 10], ["poi_dnd", "poi_fushimi", 70, 25, 20], ["poi_fushimi", "poi_pontocho", 75, 30, 22]] },
+    areas: { desc: "Neighbourhoods scored for stays.", sources: ["editorial", "places"],
+      cols: ["area_id", "city", "walkability", "price_band", "vibe"], rows: [["kyo_downtown", "Kyoto", 9, "¥¥", "coffee, design"], ["kyo_higashiyama", "Kyoto", 8, "¥¥¥", "atmospheric"], ["kyo_station", "Kyoto", 6, "¥¥", "hub"], ["tok_shibuya", "Tokyo", 9, "¥¥", "design"]] },
+    hotels: { desc: "Hotels and ryokan (planning only, no booking).", sources: ["hotels"],
+      cols: ["hotel_id", "area", "type", "price_band", "private_onsen"], rows: [["htl_ryokan_a", "Gora", "ryokan", "¥¥¥¥", true], ["htl_g", "kyo_downtown", "hotel", "¥¥", false], ["htl_c", "Korinbo", "hotel", "¥¥", false]] },
+    pois: { desc: "Places with planning metadata.", sources: ["places", "knowledge", "editorial"],
+      cols: ["poi_id", "name", "duration", "hours", "weekly_off", "crowd_peak"], rows: [["poi_fushimi", "Fushimi Inari", "90–150", "24h", "—", "10–15"], ["poi_kennin", "Kennin-ji", "60–90", "10:00–16:30", "—", "12–13"], ["poi_21cmoca", "21st Century Museum", "90–120", "10:00–18:00", "Mon", "13–15"], ["poi_kenrokuen", "Kenroku-en", "60–120", "08:00–17:00", "—", "10–13"]] },
+    restaurants: { desc: "Restaurants with dietary fit.", sources: ["places", "editorial"],
+      cols: ["rest_id", "city", "veg_friendly", "meals", "price_band"], rows: [["rst_shigetsu", "Kyoto", "full", "lunch", "¥¥¥"], ["rst_pontocho_v", "Kyoto", "good", "dinner", "¥¥"], ["rst_d3_old", "Tokyo", "none", "dinner", "¥¥"], ["rst_d3_new", "Tokyo", "good", "dinner", "¥¥"]] },
+    events: { desc: "Seasonal events: foliage, illuminations.", sources: ["events"],
+      cols: ["event_id", "place", "window", "hours", "confidence"], rows: [["evt_eikando", "Eikan-do", "Nov 7 – Dec 6 (est.)", "17:30–20:30", "medium"], ["evt_rikugien", "Rikugien", "Nov 20 – Dec 4 (est.)", "until 21:00", "medium"], ["evt_kyoto_foliage", "Kyoto", "peak Nov 15–30 (est.)", "—", "medium"]] },
+    itinerary_versions: { desc: "Every plan version and its diff.", sources: ["internal"],
+      cols: ["version", "created_by", "changed_days", "summary"], rows: [["v1", "pipeline", "1–15", "Initial validated plan"], ["v2", "edit", "—", "Created by Edit loop"]] }
+  },
+  sourceNames: { user: "User input", internal: "Internal data", knowledge: "Knowledge sources", editorial: "Editorial", rail: "Rail & routing", places: "Places / POIs", hotels: "Hotels & ryokan", events: "Events & seasonal" },
 
   // ─── Data tables (Pipeline data strip) ───────────────────────────
   tables: ["constraints", "trip_dials", "cities", "transport_edges", "travel_time_matrix", "areas", "hotels", "pois", "restaurants", "events", "itinerary_versions"]
